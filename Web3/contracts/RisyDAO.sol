@@ -19,9 +19,10 @@ import "./RisyBase.sol";
  * - DAO fee can be set or disabled by owner DAO
  * - Max balance limit for whale protection (default 0.25%)
  * - Max balance limit can be set or disabled by owner DAO
+ * - UniSwap DEX can be excluded from whale protections by owner DAO
  * - DAO can be managed by RisyDAOManager contract
- * TODO: Whitelist for UniSwap DEX
- * TODO: First launch buy bot bug, don't let bots buy first!
+ * TODO: Check if daily transfer limit blocks router and swap mechanisms.
+ * TODO: Don't let the first launch pre-buy bots to buy supply cheap!
  * (c) Risy DAO 2024. The MIT License.
  */
 /// @custom:security-contact info@risy.io
@@ -38,6 +39,8 @@ contract RisyDAO is RisyBase {
         uint256 transferLimitPercent; // Whale action protection
         uint256 maxBalance; //Whale hodl protection
         uint256 daoFee; // DAO maintenance, development, and marketing
+
+        address launchDEX; // Exclude UniSwap DEX from whale protections
 
         mapping(address => mapping(uint256 => uint256)) transferred;
     }
@@ -67,6 +70,8 @@ contract RisyDAO is RisyBase {
         rs.maxBalance = (initialSupply * 25) / 1000; // 0.25% of total supply
         rs.daoFee = (1 * 10 ** decimals()) / 1000; // 0.1% DAO fee on transfer
 
+        rs.launchDEX = address(0); // UniSwap DEX
+
         __RisyBase_init(initialOwner, initialSupply);
     }
 
@@ -93,8 +98,13 @@ contract RisyDAO is RisyBase {
         // If not mint, burn, self or owner DAO
         if (from != address(0) && to != address(0) && from != to && from != owner() && to != owner()) {
             // Daily transfer limit
-            if(rs.transferLimitPercent > 0) {
+            if(rs.transferLimitPercent > 0 && rs.timeWindow > 0 && amount > 0 && from != rs.launchDEX) {
                 _updateDailyTransferLimit(from, amount);
+            }
+
+            // Max balance limit
+            if (rs.maxBalance > 0 && balanceOf(to) + amount > rs.maxBalance && to != rs.launchDEX) {
+                revert ERC20MaxBalanceLimitError(to, balanceOf(to), rs.maxBalance);
             }
 
             // DAO fee
@@ -102,11 +112,6 @@ contract RisyDAO is RisyBase {
                 uint256 fee = (amount * rs.daoFee) / 10 ** decimals();
                 _transfer(from, owner(), fee);
                 amount -= fee;
-            }
-
-            // Max balance limit
-            if (rs.maxBalance > 0 && balanceOf(to) + amount > rs.maxBalance) {
-                revert ERC20MaxBalanceLimitError(to, balanceOf(to), rs.maxBalance);
             }
         }
 
@@ -159,6 +164,10 @@ contract RisyDAO is RisyBase {
         return _getRisyDAOStorage().maxBalance;
     }
 
+    function getLaunchDEX() public view returns (address launchDEX) {
+        return _getRisyDAOStorage().launchDEX;
+    }
+
     function setTransferLimit(uint256 timeWindow_, uint256 transferLimitPercent_) public onlyOwner {
         RisyDAOStorage storage rs = _getRisyDAOStorage();
         rs.timeWindow = timeWindow_ > 0 ? timeWindow_ : 86400;
@@ -171,5 +180,9 @@ contract RisyDAO is RisyBase {
 
     function setMaxBalance(uint256 maxBalance_) public onlyOwner {
         _getRisyDAOStorage().maxBalance = maxBalance_;
+    }
+
+    function setLaunchDEX(address launchDEX_) public onlyOwner {
+        _getRisyDAOStorage().launchDEX = launchDEX_;
     }
 }
