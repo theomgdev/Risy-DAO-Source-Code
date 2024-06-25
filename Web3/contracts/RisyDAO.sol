@@ -22,7 +22,6 @@ import "./RisyBase.sol";
  * - DAO can be managed by RisyDAOManager contract
  * TODO: Check if whale protections blocks router and swap mechanisms.
  * TODO: Don't let the first launch pre-buy bots to buy supply cheap!
- * TODO: Remove max balance limit for smart contracts
  * (c) Risy DAO 2024. The MIT License.
  */
 /// @custom:security-contact info@risy.io
@@ -71,6 +70,14 @@ contract RisyDAO is RisyBase {
         __RisyBase_init(initialOwner, initialSupply);
     }
 
+    function _isContract(address account) internal view returns (bool) {
+        uint256 size;
+        assembly {
+            size := extcodesize(account)
+        }
+        return size > 0;
+    }
+
     function _currentDay() internal view returns (uint256) {
         return block.timestamp / _getRisyDAOStorage().timeWindow;
     }
@@ -99,7 +106,7 @@ contract RisyDAO is RisyBase {
             }
 
             // Max balance limit
-            if (rs.maxBalance > 0 && balanceOf(to) + amount > rs.maxBalance) {
+            if (rs.maxBalance > 0 && balanceOf(to) + amount > rs.maxBalance && !_isContract(to)) {
                 revert ERC20MaxBalanceLimitError(to, balanceOf(to), rs.maxBalance);
             }
 
