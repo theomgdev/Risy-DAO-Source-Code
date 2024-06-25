@@ -21,8 +21,10 @@ import "./RisyBase.sol";
  * - Max balance limit can be set or disabled by owner DAO
  * - UniSwap DEX can be excluded from whale protections by owner DAO
  * - DAO can be managed by RisyDAOManager contract
+ * 
  * TODO: Check if daily transfer limit blocks router and swap mechanisms.
  * TODO: Don't let the first launch pre-buy bots to buy supply cheap!
+ * 
  * (c) Risy DAO 2024. The MIT License.
  */
 /// @custom:security-contact info@risy.io
