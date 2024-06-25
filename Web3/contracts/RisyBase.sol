@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20CappedUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
@@ -18,15 +19,18 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
  */
 
 contract RisyBase is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, ERC20PermitUpgradeable, ERC20VotesUpgradeable, ERC20FlashMintUpgradeable, UUPSUpgradeable {
-    function __RisyBase_init(address initialOwner) internal onlyInitializing {
+    function __RisyBase_init(address initialOwner, uint256 initialSupply) internal onlyInitializing {
         __ERC20_init("Risy DAO", "RISY");
         __ERC20Burnable_init();
+        __ERC20Capped_init(initialSupply * 10);
         __ERC20Pausable_init();
         __Ownable_init(initialOwner);
         __ERC20Permit_init("Risy DAO");
         __ERC20Votes_init();
         __ERC20FlashMint_init();
         __UUPSUpgradeable_init();
+
+        _mint(msg.sender, initialSupply);
     }
 
     function pause() public onlyOwner {

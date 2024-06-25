@@ -12,26 +12,32 @@ import "./RisyBase.sol";
  * Features:
  * - Fully decentralized, safe and managed by KYC DAO (Owner is the DAO)
  * - Made with passion and coffee for blockchain nerds by the blockchain nerds
+ * - Capped supply to 10x initial supply
  * - Daily transfer limit based on percentage of total balance for whale protection (default 10%)
  * - Transfer limit can be set or disabled by owner DAO
- * - Initial 0.1% DAO fee on transfer to owner DAO for DAO maintenance, development, and marketing
+ * - DAO fee on transfer to owner DAO for DAO maintenance, development, and marketing (default 0.1%)
  * - DAO fee can be set or disabled by owner DAO
+ * - Max balance limit for whale protection (default 0.25%)
+ * - Max balance limit can be set or disabled by owner DAO
  * - DAO can be managed by RisyDAOManager contract
- * TODO: Temporary 0.25% max hodl limit for start-up whale protection
  * TODO: Whitelist for UniSwap DEX
  * TODO: First launch buy bot bug, don't let bots buy first!
+ * (c) Risy DAO 2024. The MIT License.
  */
 /// @custom:security-contact info@risy.io
 contract RisyDAO is RisyBase {
     //Error for daily limit
     error ERC20DailyLimitError(address sender, uint256 transferredAmountToday, uint256 maxTransferAmount, uint256 remainingTransferLimit, uint256 percentTransferred);
 
+    //Error for max balance limit
+    error ERC20MaxBalanceLimitError(address account, uint256 balance, uint256 maxBalance);
+
     /// @custom:storage-location erc7201:risydao.storage
     struct RisyDAOStorage {
-        uint256 cap;
         uint256 timeWindow;
-        uint256 transferLimitPercent;
-        uint256 daoFee;
+        uint256 transferLimitPercent; // Whale action protection
+        uint256 maxBalance; //Whale hodl protection
+        uint256 daoFee; // DAO maintenance, development, and marketing
 
         mapping(address => mapping(uint256 => uint256)) transferred;
     }
@@ -51,16 +57,17 @@ contract RisyDAO is RisyBase {
         _disableInitializers();
     }
 
-    function initialize(address initialOwner) public initializer {
-        __RisyBase_init(initialOwner);
+    function initialize(address initialOwner, uint256 initialSupply) public initializer {
+        initialSupply = initialSupply > 0 ? initialSupply : 10 ** 12; // 1,000,000,000,000
+        initialSupply *= 10 ** decimals();
 
         RisyDAOStorage storage rs = _getRisyDAOStorage();
-        rs.cap = 10000000000000 * 10 ** decimals();
-        rs.timeWindow = 86400;
-        rs.transferLimitPercent = (10 * 10 ** decimals()) / 100;
-        rs.daoFee = (1 * 10 ** decimals()) / 1000;
+        rs.timeWindow = 86400; // 1 day in seconds for daily limit
+        rs.transferLimitPercent = (10 * 10 ** decimals()) / 100; // 10% of total balance
+        rs.maxBalance = (initialSupply * 25) / 1000; // 0.25% of total supply
+        rs.daoFee = (1 * 10 ** decimals()) / 1000; // 0.1% DAO fee on transfer
 
-        _mint(msg.sender, 1000000000000 * 10 ** decimals());
+        __RisyBase_init(initialOwner, initialSupply);
     }
 
     function _currentDay() internal view returns (uint256) {
@@ -95,6 +102,11 @@ contract RisyDAO is RisyBase {
                 uint256 fee = (amount * rs.daoFee) / 10 ** decimals();
                 _transfer(from, owner(), fee);
                 amount -= fee;
+            }
+
+            // Max balance limit
+            if (rs.maxBalance > 0 && balanceOf(to) + amount > rs.maxBalance) {
+                revert ERC20MaxBalanceLimitError(to, balanceOf(to), rs.maxBalance);
             }
         }
 
@@ -134,6 +146,19 @@ contract RisyDAO is RisyBase {
         percentTransferred = getPercentTransferred(account);
     }
 
+    function getTransferLimit() public view returns (uint256 timeWindow, uint256 transferLimitPercent) {
+        RisyDAOStorage storage rs = _getRisyDAOStorage();
+        return (rs.timeWindow, rs.transferLimitPercent);
+    }
+
+    function getDAOFee() public view returns (uint256 daoFee) {
+        return _getRisyDAOStorage().daoFee;
+    }
+
+    function getMaxBalance() public view returns (uint256 maxBalance) {
+        return _getRisyDAOStorage().maxBalance;
+    }
+
     function setTransferLimit(uint256 timeWindow_, uint256 transferLimitPercent_) public onlyOwner {
         RisyDAOStorage storage rs = _getRisyDAOStorage();
         rs.timeWindow = timeWindow_ > 0 ? timeWindow_ : 86400;
@@ -142,5 +167,9 @@ contract RisyDAO is RisyBase {
 
     function setDAOFee(uint256 daoFee_) public onlyOwner {
         _getRisyDAOStorage().daoFee = daoFee_;
+    }
+
+    function setMaxBalance(uint256 maxBalance_) public onlyOwner {
+        _getRisyDAOStorage().maxBalance = maxBalance_;
     }
 }
