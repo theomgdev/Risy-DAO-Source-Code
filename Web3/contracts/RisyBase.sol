@@ -64,6 +64,7 @@ contract RisyBase is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, 
 
     function _update(address from, address to, uint256 value)
         internal
+        virtual
         override(ERC20Upgradeable, ERC20CappedUpgradeable, ERC20PausableUpgradeable, ERC20VotesUpgradeable)
     {
         super._update(from, to, value);

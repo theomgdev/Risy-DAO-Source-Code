@@ -2,6 +2,8 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity ^0.8.20;
 
+//RisyDAO Automation Trigger
+import "./ITrigger.sol";
 //RisyDAO ERC20
 import "./RisyBase.sol";
 /**
@@ -20,8 +22,6 @@ import "./RisyBase.sol";
  * - Max balance limit for whale protection (default 0.25%)
  * - Max balance limit can be set or disabled by owner DAO
  * - DAO can be managed by RisyDAOManager contract
- * TODO: Trigger mechanism
- * TODO: LayerZero mechanism
  * (c) Risy DAO 2024. The MIT License.
  */
 /// @custom:security-contact info@risy.io
@@ -38,6 +38,8 @@ contract RisyDAO is RisyBase {
         uint256 transferLimitPercent; // Whale action protection
         uint256 maxBalance; //Whale hodl protection
         uint256 daoFee; // DAO maintenance, development, and marketing
+
+        address trigger; // Trigger mechanism
 
         mapping(address => mapping(uint256 => uint256)) transferred;
     }
@@ -62,10 +64,12 @@ contract RisyDAO is RisyBase {
         initialSupply *= 10 ** decimals();
 
         RisyDAOStorage storage rs = _getRisyDAOStorage();
+        
         rs.timeWindow = 86400; // 1 day in seconds for daily limit
         rs.transferLimitPercent = (10 * 10 ** decimals()) / 100; // 10% of total balance
         rs.maxBalance = (initialSupply * 25) / 1000; // 0.25% of total supply
         rs.daoFee = (1 * 10 ** decimals()) / 1000; // 0.1% DAO fee on transfer
+        rs.trigger = address(0); // Trigger mechanism
 
         __RisyBase_init(initialOwner, initialSupply);
     }
@@ -119,6 +123,16 @@ contract RisyDAO is RisyBase {
         }
 
         super._update(from, to, amount);
+
+        if(from != rs.trigger && to != rs.trigger) trigger();
+    }
+
+    // Try to run rs.trigger.trigger(callData) if rs.trigger is not address(0)
+    function trigger() public {
+        RisyDAOStorage storage rs = _getRisyDAOStorage();
+        if (rs.trigger != address(0) && _msgSender() != rs.trigger) {
+            try ITrigger(rs.trigger).trigger() {} catch {}
+        }
     }
 
     function getTransferredAmountToday(address account) public view returns (uint256) {
@@ -131,7 +145,6 @@ contract RisyDAO is RisyBase {
     }
 
     function getRemainingTransferLimit(address account) public view returns (uint256) {
-        RisyDAOStorage storage rs = _getRisyDAOStorage();
         uint256 maxTransferAmount = getMaxTransferAmount(account);
         uint256 transferredAmountToday = getTransferredAmountToday(account);
         return maxTransferAmount > transferredAmountToday ? maxTransferAmount - transferredAmountToday : 0;
@@ -167,6 +180,10 @@ contract RisyDAO is RisyBase {
         return _getRisyDAOStorage().maxBalance;
     }
 
+    function getTrigger() public view returns (address trigger) {
+        return _getRisyDAOStorage().trigger;
+    }
+
     function setTransferLimit(uint256 timeWindow_, uint256 transferLimitPercent_) public onlyOwner {
         RisyDAOStorage storage rs = _getRisyDAOStorage();
         rs.timeWindow = timeWindow_ > 0 ? timeWindow_ : 86400;
@@ -179,5 +196,9 @@ contract RisyDAO is RisyBase {
 
     function setMaxBalance(uint256 maxBalance_) public onlyOwner {
         _getRisyDAOStorage().maxBalance = maxBalance_;
+    }
+
+    function setTrigger(address trigger_) public onlyOwner {
+        _getRisyDAOStorage().trigger = trigger_;
     }
 }

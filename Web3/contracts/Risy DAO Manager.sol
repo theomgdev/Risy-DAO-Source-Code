@@ -15,7 +15,7 @@ contract RisyDAOManager is Governor, GovernorSettings, GovernorCountingSimple, G
         Governor("Risy DAO Manager")
         GovernorSettings(1 days, 3 days, 1000000000e18)
         GovernorVotes(_token)
-        GovernorVotesQuorumFraction(1)
+        GovernorVotesQuorumFraction(2)
     {}
 
     // The following functions are overrides required by Solidity.

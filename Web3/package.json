@@ -9,10 +9,11 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.7",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts": "^5.0.0",
     "@openzeppelin/contracts-upgradeable": "^5.0.0",
     "@openzeppelin/hardhat-upgrades": "^3.0.0",
-    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.16.1"
+    "hardhat": "^2.22.5"
   }
 }

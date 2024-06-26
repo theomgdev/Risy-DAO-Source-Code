@@ -1,15 +1,26 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 
+import { RisyDAO__factory, RisyDAO } from "../typechain-types";
+
 describe("RisyDAO", function () {
   it("Test contract", async function () {
-    const ContractFactory = await ethers.getContractFactory("RisyDAO");
+    const signers = await ethers.getSigners();
 
-    const initialOwner = (await ethers.getSigners())[0].address;
+    const ContractFactory = await ethers.getContractFactory("RisyDAO") as RisyDAO__factory;
 
-    const instance = await upgrades.deployProxy(ContractFactory, [initialOwner]);
+    const initialOwner = signers[0].address;
+
+    const instance = await upgrades.deployProxy(ContractFactory, [initialOwner,0]) as unknown as RisyDAO;
     await instance.waitForDeployment();
 
     expect(await instance.name()).to.equal("Risy DAO");
+
+    let decimals = await instance.decimals();
+    expect(decimals).to.equal(18);
+
+    expect(await instance.totalSupply()).to.equal(BigInt(1_000_000_000_000) * BigInt(10) ** BigInt(decimals));
+
+    expect(await instance.balanceOf(initialOwner)).to.equal(BigInt(1_000_000_000_000) * BigInt(10) ** BigInt(decimals));
   });
 });
