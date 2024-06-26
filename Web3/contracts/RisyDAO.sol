@@ -20,8 +20,8 @@ import "./RisyBase.sol";
  * - Max balance limit for whale protection (default 0.25%)
  * - Max balance limit can be set or disabled by owner DAO
  * - DAO can be managed by RisyDAOManager contract
- * TODO: Check if whale protections blocks router and swap mechanisms.
- * TODO: Don't let the first launch pre-buy bots to buy supply cheap!
+ * TODO: Trigger mechanism
+ * TODO: LayerZero mechanism
  * (c) Risy DAO 2024. The MIT License.
  */
 /// @custom:security-contact info@risy.io

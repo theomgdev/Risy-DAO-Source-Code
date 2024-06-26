@@ -18,7 +18,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
  * @dev RisyBase contract is the base, battle-tested, and upgradeable contract for Risy DAO Token.
  */
 
-contract RisyBase is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, ERC20PermitUpgradeable, ERC20VotesUpgradeable, ERC20FlashMintUpgradeable, UUPSUpgradeable {
+contract RisyBase is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, ERC20CappedUpgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, ERC20PermitUpgradeable, ERC20VotesUpgradeable, ERC20FlashMintUpgradeable, UUPSUpgradeable {
     function __RisyBase_init(address initialOwner, uint256 initialSupply) internal onlyInitializing {
         __ERC20_init("Risy DAO", "RISY");
         __ERC20Burnable_init();
@@ -64,7 +64,7 @@ contract RisyBase is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, 
 
     function _update(address from, address to, uint256 value)
         internal
-        override(ERC20Upgradeable, ERC20PausableUpgradeable, ERC20VotesUpgradeable)
+        override(ERC20Upgradeable, ERC20CappedUpgradeable, ERC20PausableUpgradeable, ERC20VotesUpgradeable)
     {
         super._update(from, to, value);
     }
