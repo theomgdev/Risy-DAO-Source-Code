@@ -4,14 +4,14 @@ import { ethers, upgrades } from "hardhat";
 import { RisyDAO__factory, RisyDAO, MockFlashBorrower, MockFlashBorrower__factory } from "../typechain-types";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
-describe("Risy DAO ERC20", function () {
+describe("Risy DAO Standard", function () {
   let ContractFactory: RisyDAO__factory;
   let instance: RisyDAO;
   let signers: HardhatEthersSigner[];
   let owner: HardhatEthersSigner;
   let decimals: bigint;
 
-  describe("ERC20: Standard tests", function () {
+  describe("ERC20: Core tests", function () {
     beforeEach(async function () {
       signers = await ethers.getSigners();
       ContractFactory = await ethers.getContractFactory("RisyDAO") as RisyDAO__factory;
@@ -137,7 +137,7 @@ describe("Risy DAO ERC20", function () {
     });
   });
 
-  describe("ERC20: Owner DAO Permission Tests", function () {
+  describe("ERC20: Owner DAO Permission and Upgrade Tests", function () {
     let recipient: HardhatEthersSigner;
 
     beforeEach(async function () {
