@@ -19,7 +19,7 @@ import "./RisyBase.sol";
  * - Transfer limit can be set or disabled by owner DAO
  * - DAO fee on transfer to owner DAO for DAO maintenance, development, and marketing (default 0.1%)
  * - DAO fee can be set or disabled by owner DAO
- * - Max balance limit for whale protection (default 0.25%)
+ * - Max balance limit for whale protection (default 0.75%)
  * - Max balance limit can be set or disabled by owner DAO
  * - DAO can be managed by RisyDAOManager contract
  * (c) Risy DAO 2024. The MIT License.
@@ -41,6 +41,9 @@ contract RisyDAO is RisyBase {
 
         address trigger; // Trigger mechanism
 
+        // Whitelist for daily limit (mostly for dApps and exchanges)
+        mapping(address => bool) whiteList;
+        // Daily limit tracking
         mapping(address => mapping(uint256 => uint256)) transferred;
     }
 
@@ -67,7 +70,7 @@ contract RisyDAO is RisyBase {
         
         rs.timeWindow = 86400; // 1 day in seconds for daily limit
         rs.transferLimitPercent = (10 * 10 ** decimals()) / 100; // 10% of total balance
-        rs.maxBalance = (initialSupply * 25) / 1000; // 0.25% of total supply
+        rs.maxBalance = (initialSupply * 75) / 1000; // 0.75% of total supply
         rs.daoFee = (1 * 10 ** decimals()) / 1000; // 0.1% DAO fee on transfer
         rs.trigger = address(0); // Trigger mechanism
 
@@ -105,17 +108,17 @@ contract RisyDAO is RisyBase {
         // If not mint, burn, self or owner DAO
         if (from != address(0) && to != address(0) && from != to && from != owner() && to != owner()) {
             // Daily transfer limit
-            if(rs.transferLimitPercent > 0 && rs.timeWindow > 0 && amount > 0) {
+            if(rs.transferLimitPercent > 0 && rs.timeWindow > 0 && amount > 0 && !isWhiteListed(from)) {
                 _updateDailyTransferLimit(from, amount);
             }
 
             // Max balance limit
-            if (rs.maxBalance > 0 && balanceOf(to) + amount > rs.maxBalance && !_isContract(to)) {
+            if (rs.maxBalance > 0 && balanceOf(to) + amount > rs.maxBalance && !isWhiteListed(to)) {
                 revert ERC20MaxBalanceLimitError(to, balanceOf(to), rs.maxBalance);
             }
 
             // DAO fee
-            if (rs.daoFee > 0) {
+            if (rs.daoFee > 0 && !isWhiteListed(from)) {
                 uint256 fee = (amount * rs.daoFee) / 10 ** decimals();
                 _transfer(from, owner(), fee);
                 amount -= fee;
@@ -167,21 +170,29 @@ contract RisyDAO is RisyBase {
         percentTransferred = getPercentTransferred(account);
     }
 
-    function getTransferLimit() public view returns (uint256 timeWindow, uint256 transferLimitPercent) {
+    function isWhiteListed(address account) public view returns (bool) {
+        return _getRisyDAOStorage().whiteList[account];
+    }
+
+    function getTransferLimit() public view returns (uint256, uint256) {
         RisyDAOStorage storage rs = _getRisyDAOStorage();
         return (rs.timeWindow, rs.transferLimitPercent);
     }
 
-    function getDAOFee() public view returns (uint256 daoFee) {
+    function getDAOFee() public view returns (uint256) {
         return _getRisyDAOStorage().daoFee;
     }
 
-    function getMaxBalance() public view returns (uint256 maxBalance) {
+    function getMaxBalance() public view returns (uint256) {
         return _getRisyDAOStorage().maxBalance;
     }
 
-    function getTrigger() public view returns (address trigger) {
+    function getTrigger() public view returns (address) {
         return _getRisyDAOStorage().trigger;
+    }
+
+    function setWhiteList(address account, bool whiteListed) public onlyOwner {
+        _getRisyDAOStorage().whiteList[account] = whiteListed;
     }
 
     function setTransferLimit(uint256 timeWindow_, uint256 transferLimitPercent_) public onlyOwner {

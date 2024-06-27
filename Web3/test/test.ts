@@ -3,17 +3,17 @@ import { ethers, upgrades } from "hardhat";
 
 import { RisyDAO__factory, RisyDAO } from "../typechain-types";
 
-describe("RisyDAO", function () {
-  it("Test contract", async function () {
-    const signers = await ethers.getSigners();
+describe("RisyDAO", async function () {
+  const signers = await ethers.getSigners();
 
-    const ContractFactory = await ethers.getContractFactory("RisyDAO") as RisyDAO__factory;
+  const ContractFactory = await ethers.getContractFactory("RisyDAO") as RisyDAO__factory;
 
-    const initialOwner = signers[0].address;
+  const initialOwner = signers[0].address;
 
-    const instance = await upgrades.deployProxy(ContractFactory, [initialOwner,0]) as unknown as RisyDAO;
-    await instance.waitForDeployment();
+  const instance = await upgrades.deployProxy(ContractFactory, [initialOwner,0]) as unknown as RisyDAO;
+  await instance.waitForDeployment();
 
+  it("Test initial creation of contract", async function () {
     expect(await instance.name()).to.equal("Risy DAO");
 
     let decimals = await instance.decimals();
