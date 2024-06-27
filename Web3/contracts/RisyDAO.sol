@@ -130,6 +130,15 @@ contract RisyDAO is RisyBase {
         }
     }
 
+    // Flash fee is 0,1% of the amount borrowed to be paid by the borrower to the owner DAO
+    function flashFee(address token, uint256 amount) public view override returns (uint256) {
+        if (token != address(this)) {
+            revert ERC3156UnsupportedToken(token);
+        }
+        
+        return (amount * _getRisyDAOStorage().daoFee) / 10 ** decimals();
+    }
+
     function getTransferredAmountToday(address account) public view returns (uint256) {
         return _getRisyDAOStorage().transferred[account][_currentDay()];
     }

@@ -45,6 +45,16 @@ contract RisyBase is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, 
         _mint(to, amount);
     }
 
+    // Flash fee receiver is the owner DAO
+    function _flashFeeReceiver() internal view override returns (address) {
+        return owner();
+    }
+
+    // Flash loan capped according to ERC20CappedUpgradeable
+    function maxFlashLoan(address token) public view override returns (uint256) {
+        return token == address(this) ? cap() - totalSupply() : 0;
+    }
+
     function clock() public view override returns (uint48) {
         return uint48(block.timestamp);
     }

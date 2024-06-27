@@ -1,17 +1,17 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 
-import { RisyDAO__factory, RisyDAO } from "../typechain-types";
+import { RisyDAO__factory, RisyDAO, MockFlashBorrower, MockFlashBorrower__factory } from "../typechain-types";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
-describe("RisyDAO", function () {
+describe("Risy DAO ERC20", function () {
   let ContractFactory: RisyDAO__factory;
   let instance: RisyDAO;
   let signers: HardhatEthersSigner[];
   let owner: HardhatEthersSigner;
   let decimals: bigint;
 
-  describe("Standard ERC20 tests", function () {
+  describe("ERC20: Standard tests", function () {
     beforeEach(async function () {
       signers = await ethers.getSigners();
       ContractFactory = await ethers.getContractFactory("RisyDAO") as RisyDAO__factory;
@@ -127,10 +127,17 @@ describe("RisyDAO", function () {
       await instance.connect(spender).transferFrom(owner.address, spender.address, value);
   
       expect(await instance.allowance(owner.address, spender.address)).to.equal(0);
+
+      await expect(instance.permit(permit.owner, permit.spender, permit.value, permit.deadline, v, r, s))
+        .to.be.revertedWithCustomError(instance, "ERC2612InvalidSigner");
+
+      // Check balances
+      expect(await instance.balanceOf(owner.address)).to.equal(BigInt(1_000_000_000_000) * BigInt(10) ** BigInt(decimals) - BigInt(value));
+      expect(await instance.balanceOf(spender.address)).to.equal(value);
     });
   });
 
-  describe("Owner DAO Permission Tests", function () {
+  describe("ERC20: Owner DAO Permission Tests", function () {
     let recipient: HardhatEthersSigner;
 
     beforeEach(async function () {
@@ -160,7 +167,90 @@ describe("RisyDAO", function () {
     });
   });
 
-  describe("RisyDAO Voting and Delegation", function () {
+  describe("ERC20: Flash Loan Mint Tests", function () {
+    let MockFlashBorrowerFactory: MockFlashBorrower__factory;
+    let risyDAO: RisyDAO;
+    let flashBorrower: MockFlashBorrower;
+    let signers: HardhatEthersSigner[];
+    let owner: HardhatEthersSigner;
+    let user: HardhatEthersSigner;
+  
+    beforeEach(async function () {
+      signers = await ethers.getSigners();
+      [owner, user] = signers;
+  
+      risyDAO = await upgrades.deployProxy(ContractFactory, [owner.address, 0]) as unknown as RisyDAO;
+      await risyDAO.waitForDeployment();
+  
+      MockFlashBorrowerFactory = await ethers.getContractFactory("MockFlashBorrower") as MockFlashBorrower__factory;
+      flashBorrower = await MockFlashBorrowerFactory.deploy(await risyDAO.getAddress());
+      await flashBorrower.waitForDeployment();
+    });
+  
+    it("should allow flash loans", async function () {
+      const loanAmount = ethers.parseEther("1000");
+      const fee = await risyDAO.flashFee(await risyDAO.getAddress(), loanAmount);
+
+      // Mint fee to spend to the borrower
+      await risyDAO.mint(await flashBorrower.getAddress(), fee);
+
+      // Check initial balances
+      expect(await risyDAO.balanceOf(await flashBorrower.getAddress())).to.equal(fee);
+  
+      // Perform flash loan
+      await expect(flashBorrower.flashBorrow(await risyDAO.getAddress(), loanAmount))
+        .to.not.be.reverted;
+  
+      // Check final balances (should be the same as initial)
+      expect(await risyDAO.balanceOf(await flashBorrower.getAddress())).to.equal(0);
+    });
+  
+    it("should revert if flash loan is not repaid", async function () {
+      const loanAmount = ethers.parseEther("1000");
+      
+      // Set the borrower to not repay
+      await flashBorrower.setShouldRepay(false);
+  
+      // Attempt flash loan
+      await expect(flashBorrower.flashBorrow(await risyDAO.getAddress(), loanAmount))
+        .to.be.revertedWithCustomError(risyDAO, "ERC3156InvalidReceiver");
+    });
+  
+    it("should handle flash fees correctly", async function () {
+      // Get the start balance of the owner
+      const ownerStartBalance = await risyDAO.balanceOf(owner.address);
+      const loanAmount = ethers.parseEther("1000");
+      const fee = await risyDAO.flashFee(await risyDAO.getAddress(), loanAmount);
+      // Mint fee to spend to the borrower
+      await risyDAO.mint(await flashBorrower.getAddress(), fee);
+      
+      // Perform flash loan
+      await flashBorrower.flashBorrow(await risyDAO.getAddress(), loanAmount);
+  
+      // Check if fee was transferred to fee receiver
+      expect(await risyDAO.balanceOf(owner)).to.equal(BigInt(ownerStartBalance) + BigInt(fee));
+    });
+
+    it("should not allow flash loans over the cap", async function () {
+      const cap = await risyDAO.cap();
+      const excessiveLoanAmount = cap + 1n;
+  
+      // Attempt flash loan with excessive amount
+      await expect(flashBorrower.flashBorrow(await risyDAO.getAddress(), excessiveLoanAmount))
+        .to.be.revertedWithCustomError(risyDAO, "ERC3156ExceededMaxLoan");
+    });
+  
+    it("should respect max flash loan amount", async function () {
+      const maxLoan = await risyDAO.maxFlashLoan(await risyDAO.getAddress());
+      const excessiveLoanAmount = maxLoan + 1n;
+  
+      // Attempt flash loan with excessive amount
+      await expect(flashBorrower.flashBorrow(await risyDAO.getAddress(), excessiveLoanAmount))
+        .to.be.revertedWithCustomError(risyDAO, "ERC3156ExceededMaxLoan");
+    });
+  });
+
+  describe("ERC20: RisyDAO Voting and Delegation Tests", function () {
     let voter1: HardhatEthersSigner, voter2: HardhatEthersSigner;
   
     beforeEach(async function () {
