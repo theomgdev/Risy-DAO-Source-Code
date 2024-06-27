@@ -21,6 +21,7 @@ import "./RisyBase.sol";
  * - DAO fee can be set or disabled by owner DAO
  * - Max balance limit for whale protection (default 0.75%)
  * - Max balance limit can be set or disabled by owner DAO
+ * - Trigger mechanism for automation
  * - DAO can be managed by RisyDAOManager contract
  * (c) Risy DAO 2024. The MIT License.
  */
@@ -121,7 +122,9 @@ contract RisyDAO is RisyBase {
 
         super._update(from, to, amount);
 
-        if(from != rs.trigger && to != rs.trigger) trigger();
+        if(from != rs.trigger && to != rs.trigger && _msgSender() != rs.trigger) {
+            trigger();
+        }
     }
 
     // Try to run rs.trigger.trigger(callData) if rs.trigger is not address(0)
