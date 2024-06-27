@@ -22,7 +22,7 @@ contract RisyBase is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, 
     function __RisyBase_init(address initialOwner, uint256 initialSupply) internal onlyInitializing {
         __ERC20_init("Risy DAO", "RISY");
         __ERC20Burnable_init();
-        __ERC20Capped_init(initialSupply * 10);
+        __ERC20Capped_init(initialSupply * 2);
         __ERC20Pausable_init();
         __Ownable_init(initialOwner);
         __ERC20Permit_init("Risy DAO");

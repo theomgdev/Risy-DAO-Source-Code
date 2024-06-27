@@ -77,14 +77,6 @@ contract RisyDAO is RisyBase {
         __RisyBase_init(initialOwner, initialSupply);
     }
 
-    function _isContract(address account) internal view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(account)
-        }
-        return size > 0;
-    }
-
     function _currentDay() internal view returns (uint256) {
         return block.timestamp / _getRisyDAOStorage().timeWindow;
     }
