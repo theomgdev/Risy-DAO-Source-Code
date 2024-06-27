@@ -165,6 +165,32 @@ describe("Risy DAO ERC20", function () {
 
       await instance.connect(owner).unpause();
     });
+
+    it("Only owner is able to upgrade the UUPS contract", async function () {
+      const RisyDAOFactory = await ethers.getContractFactory("RisyDAO");
+
+      // Deploy using Hardhat's upgradeProxy function
+      upgrades.validateImplementation(RisyDAOFactory);
+      upgrades.validateUpgrade(await instance.getAddress(), RisyDAOFactory);
+      upgrades.prepareUpgrade(await instance.getAddress(), RisyDAOFactory);
+      const upgradedInstance = await upgrades.upgradeProxy(instance, RisyDAOFactory) as unknown as RisyDAO;
+      await upgradedInstance.waitForDeployment();
+
+      expect(await instance.owner()).to.equal(owner.address);
+      expect(await instance.getVersion()).to.equal(2);
+
+      // Manually deploy a new implementation contract
+      const newImplementation = await RisyDAOFactory.deploy() as unknown as RisyDAO;
+      await newImplementation.waitForDeployment();
+  
+      await expect(instance.connect(recipient).upgradeToAndCall(await newImplementation.getAddress(), "0x"))
+        .to.be.revertedWithCustomError(instance, "OwnableUnauthorizedAccount");
+  
+      await instance.connect(owner).upgradeToAndCall(await newImplementation.getAddress(), "0x");
+
+      expect(await instance.owner()).to.equal(owner.address);
+      expect(await instance.getVersion()).to.equal(3);
+    });
   });
 
   describe("ERC20: Flash Loan Mint Tests", function () {

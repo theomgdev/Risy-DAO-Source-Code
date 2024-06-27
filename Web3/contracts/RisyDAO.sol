@@ -34,6 +34,7 @@ contract RisyDAO is RisyBase {
 
     /// @custom:storage-location erc7201:risydao.storage
     struct RisyDAOStorage {
+        uint256 version;
         uint256 timeWindow;
         uint256 transferLimitPercent; // Whale action protection
         uint256 maxBalance; //Whale hodl protection
@@ -68,6 +69,7 @@ contract RisyDAO is RisyBase {
 
         RisyDAOStorage storage rs = _getRisyDAOStorage();
         
+        rs.version = 1;
         rs.timeWindow = 86400; // 1 day in seconds for daily limit
         rs.transferLimitPercent = (10 * 10 ** decimals()) / 100; // 10% of total balance
         rs.maxBalance = (initialSupply * 75) / 1000; // 0.75% of total supply
@@ -192,6 +194,10 @@ contract RisyDAO is RisyBase {
         return _getRisyDAOStorage().trigger;
     }
 
+    function getVersion() public view returns (uint256) {
+        return _getRisyDAOStorage().version;
+    }
+
     function setWhiteList(address account, bool whiteListed) public onlyOwner {
         _getRisyDAOStorage().whiteList[account] = whiteListed;
     }
@@ -212,5 +218,11 @@ contract RisyDAO is RisyBase {
 
     function setTrigger(address trigger_) public onlyOwner {
         _getRisyDAOStorage().trigger = trigger_;
+    }
+
+    function upgradeToAndCall(address newImplementation, bytes memory data) public payable override onlyProxy {
+        super.upgradeToAndCall(newImplementation, data);
+
+        _getRisyDAOStorage().version++;
     }
 }
