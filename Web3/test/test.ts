@@ -2,10 +2,11 @@ import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 
 import { RisyDAO__factory, RisyDAO } from "../typechain-types";
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
 describe("RisyDAO", function () {
-  let signers, ContractFactory, instance, initialOwner;
-  
+  let signers:HardhatEthersSigner[], ContractFactory:RisyDAO__factory, instance:RisyDAO, initialOwner:string;
+
   it("Test initial creation of contract", async function () {
     signers = await ethers.getSigners();
 
@@ -25,5 +26,8 @@ describe("RisyDAO", function () {
     expect(await instance.totalSupply()).to.equal(BigInt(1_000_000_000_000) * BigInt(10) ** BigInt(decimals));
 
     expect(await instance.balanceOf(initialOwner)).to.equal(BigInt(1_000_000_000_000) * BigInt(10) ** BigInt(decimals));
+  });
+
+  it("Test transfers, approvals, and allowances", async function () {
   });
 });
