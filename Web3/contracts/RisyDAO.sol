@@ -28,7 +28,7 @@ import "./RisyBase.sol";
 /// @custom:security-contact info@risy.io
 contract RisyDAO is RisyBase {
     //Error for daily limit
-    error ERC20DailyLimitError(address sender, uint256 transferredAmountToday, uint256 maxTransferAmount, uint256 remainingTransferLimit, uint256 percentTransferred);
+    error ERC20DailyLimitError(address sender, uint256 transferable, uint256 percentTransferable);
 
     //Error for max balance limit
     error ERC20MaxBalanceLimitError(address account, uint256 balance, uint256 maxBalance);
@@ -46,7 +46,8 @@ contract RisyDAO is RisyBase {
         // Whitelist for daily limit (mostly for dApps and exchanges)
         mapping(address => bool) whiteList;
         // Daily limit tracking
-        mapping(address => mapping(uint256 => uint256)) transferred;
+        mapping(address => mapping(uint256 => uint256)) transferable;
+        mapping(address => mapping(uint256 => bool)) transferableSet;
     }
 
     // keccak256(abi.encode(uint256(keccak256("risydao.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -84,33 +85,85 @@ contract RisyDAO is RisyBase {
         return block.timestamp / _getRisyDAOStorage().timeWindow;
     }
 
-    function _increaseTransferred(address account, uint256 amount) internal {
+    function _addTransferable(address account, uint256 amount) internal {
         RisyDAOStorage storage rs = _getRisyDAOStorage();
-        rs.transferred[account][currentDay()] += amount;
+        rs.transferable[account][currentDay()] += amount;
     }
 
-    function _updateDailyTransferLimit(address sender, uint256 amount) internal {
-        if (getTransferredAmountToday(sender) + amount > getMaxTransferAmount(sender)) {
-            (uint256 transferredAmountToday, uint256 maxTransferAmount, uint256 remainingTransferLimit, uint256 percentTransferred) = getTransferLimitDetails(sender);
-            revert ERC20DailyLimitError(sender, transferredAmountToday, maxTransferAmount, remainingTransferLimit, percentTransferred);
+    function _removeTransferable(address account, uint256 amount) internal {
+        RisyDAOStorage storage rs = _getRisyDAOStorage();
+        rs.transferable[account][currentDay()] -= amount <= getTransferable(account) ? amount : getTransferable(account);
+    }
+
+    function _setTransferable(address account, uint256 amount) internal {
+        RisyDAOStorage storage rs = _getRisyDAOStorage();
+        rs.transferable[account][currentDay()] = amount;
+        rs.transferableSet[account][currentDay()] = true;
+    }
+
+    function _isTransferableSet(address account) internal view returns (bool) {
+        return _getRisyDAOStorage().transferableSet[account][currentDay()];
+    }
+
+    function getTransferable(address account) public view returns (uint256) {
+        RisyDAOStorage storage rs = _getRisyDAOStorage();
+
+        return rs.transferable[account][currentDay()];
+    }
+
+    function getPercentTransferable(address account) public view returns (uint256) {
+        uint256 transferable = getTransferable(account);
+        if (account == address(0) || transferable == type(uint256).max) {
+            return 10 ** decimals();
+        }
+        return balanceOf(account) > 0 ? (transferable * 10 ** decimals()) / balanceOf(account) : 0;
+    }
+
+    function getTransferLimitDetails(address account) public view returns (
+        uint256 transferable,
+        uint256 percentTransferable
+    ) {
+        transferable = getTransferable(account);
+        percentTransferable = getPercentTransferable(account);
+    }
+
+    function _updateDailyTransferLimit(address from, address to, uint256 amount) internal {
+        RisyDAOStorage storage rs = _getRisyDAOStorage();
+
+        _removeTransferable(from, amount);
+        _addTransferable(to, amount * rs.transferLimitPercent / 10 ** decimals());
+    }
+
+    function _checkDailyTransferLimit(address from, uint256 amount) public {
+        RisyDAOStorage storage rs = _getRisyDAOStorage();
+
+        if(!_isTransferableSet(from)) {
+            _setTransferable(from, (balanceOf(from) * rs.transferLimitPercent) / 10 ** decimals());
         }
 
-        _increaseTransferred(sender, amount);
+        if (getTransferable(from) < amount) {
+            (uint256 transferable, uint256 percentTransferable) = getTransferLimitDetails(from);
+            revert ERC20DailyLimitError(from, transferable, percentTransferable);
+        }
     }
 
     function _update(address from, address to, uint256 amount) internal override {
         RisyDAOStorage storage rs = _getRisyDAOStorage();
 
-        // If not mint, burn, self or owner DAO
-        if (from != address(0) && to != address(0) && from != to && from != owner() && to != owner()) {
-            // Daily transfer limit
-            if(rs.transferLimitPercent > 0 && rs.timeWindow > 0 && amount > 0 && !isWhiteListed(from)) {
-                _updateDailyTransferLimit(from, amount);
-            }
+        // Check daily transfer limit
+        if(rs.transferLimitPercent > 0 && rs.timeWindow > 0 && amount > 0 && !isWhiteListed(from) && from != owner() && from != address(0)) {
+            _checkDailyTransferLimit(from, amount);
+        }
 
+        // Update daily transfer limit
+        if(rs.transferLimitPercent > 0 && rs.timeWindow > 0 && amount > 0) {
+            _updateDailyTransferLimit(from, to, amount);
+        }
+
+        if(from != owner() && to != owner() && from != address(0) && to != address(0)) {
             // Max balance limit
             if (rs.maxBalance > 0 && balanceOf(to) + amount > rs.maxBalance && !isWhiteListed(to)) {
-                revert ERC20MaxBalanceLimitError(to, balanceOf(to), rs.maxBalance);
+                revert ERC20MaxBalanceLimitError(to, balanceOf(to) + amount, rs.maxBalance);
             }
 
             // DAO fee
@@ -134,48 +187,6 @@ contract RisyDAO is RisyBase {
         if (rs.trigger != address(0) && _msgSender() != rs.trigger) {
             try ITrigger(rs.trigger).trigger() {} catch {}
         }
-    }
-
-    // Flash fee is 0,1% of the amount borrowed to be paid by the borrower to the owner DAO
-    function flashFee(address token, uint256 amount) public view override returns (uint256) {
-        if (token != address(this)) {
-            revert ERC3156UnsupportedToken(token);
-        }
-        
-        return (amount * _getRisyDAOStorage().daoFee) / 10 ** decimals();
-    }
-
-    function getTransferredAmountToday(address account) public view returns (uint256) {
-        return _getRisyDAOStorage().transferred[account][currentDay()];
-    }
-
-    function getMaxTransferAmount(address account) public view returns (uint256) {
-        RisyDAOStorage storage rs = _getRisyDAOStorage();
-
-        return (balanceOf(account) * rs.transferLimitPercent) / 10 ** decimals();
-    }
-
-    function getRemainingTransferLimit(address account) public view returns (uint256) {
-        uint256 maxTransferAmount = getMaxTransferAmount(account);
-        uint256 transferredAmountToday = getTransferredAmountToday(account);
-        return maxTransferAmount > transferredAmountToday ? maxTransferAmount - transferredAmountToday : 0;
-    }
-
-    function getPercentTransferred(address account) public view returns (uint256) {
-        uint256 maxTransferAmount = getMaxTransferAmount(account);
-        return maxTransferAmount > 0 ? (getTransferredAmountToday(account) * 10 ** decimals()) / maxTransferAmount : 0;
-    }
-
-    function getTransferLimitDetails(address account) public view returns (
-        uint256 transferredAmountToday,
-        uint256 maxTransferAmount,
-        uint256 remainingTransferLimit,
-        uint256 percentTransferred
-    ) {
-        transferredAmountToday = getTransferredAmountToday(account);
-        maxTransferAmount = getMaxTransferAmount(account);
-        remainingTransferLimit = getRemainingTransferLimit(account);
-        percentTransferred = getPercentTransferred(account);
     }
 
     function isWhiteListed(address account) public view returns (bool) {
@@ -204,6 +215,9 @@ contract RisyDAO is RisyBase {
     }
 
     function setWhiteList(address account, bool whiteListed) public onlyOwner {
+        RisyDAOStorage storage rs = _getRisyDAOStorage();
+
+        if(!whiteListed) _setTransferable(account, (balanceOf(account) * rs.transferLimitPercent) / 10 ** decimals());
         _getRisyDAOStorage().whiteList[account] = whiteListed;
     }
 

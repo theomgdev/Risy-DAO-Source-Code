@@ -9,7 +9,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20Pausable
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20FlashMintUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
@@ -18,7 +17,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
  * @dev RisyBase contract is the base, battle-tested, and upgradeable contract for Risy DAO Token.
  */
 
-contract RisyBase is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, ERC20CappedUpgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, ERC20PermitUpgradeable, ERC20VotesUpgradeable, ERC20FlashMintUpgradeable, UUPSUpgradeable {
+contract RisyBase is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, ERC20CappedUpgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, ERC20PermitUpgradeable, ERC20VotesUpgradeable, UUPSUpgradeable {
     function __RisyBase_init(address initialOwner, uint256 initialSupply) internal onlyInitializing {
         __ERC20_init("Risy DAO", "RISY");
         __ERC20Burnable_init();
@@ -27,7 +26,6 @@ contract RisyBase is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, 
         __Ownable_init(initialOwner);
         __ERC20Permit_init("Risy DAO");
         __ERC20Votes_init();
-        __ERC20FlashMint_init();
         __UUPSUpgradeable_init();
 
         _mint(msg.sender, initialSupply);
@@ -43,16 +41,6 @@ contract RisyBase is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, 
 
     function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount);
-    }
-
-    // Flash fee receiver is the owner DAO
-    function _flashFeeReceiver() internal view override returns (address) {
-        return owner();
-    }
-
-    // Flash loan capped according to ERC20CappedUpgradeable
-    function maxFlashLoan(address token) public view override returns (uint256) {
-        return token == address(this) ? cap() - totalSupply() : 0;
     }
 
     function clock() public view override returns (uint48) {
