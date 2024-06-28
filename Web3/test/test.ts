@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 
-import { RisyDAO__factory, RisyDAO, MockFlashBorrower, MockFlashBorrower__factory } from "../typechain-types";
+import { RisyDAO__factory, RisyDAO, MockFlashBorrower__factory, MockFlashBorrower, TriggerMock__factory, TriggerMock } from "../typechain-types";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
-describe("Risy DAO Standard", function () {
+describe("Risy DAO Standard Functionality", function () {
   let ContractFactory: RisyDAO__factory;
   let instance: RisyDAO;
   let signers: HardhatEthersSigner[];
@@ -199,11 +199,10 @@ describe("Risy DAO Standard", function () {
     let flashBorrower: MockFlashBorrower;
     let signers: HardhatEthersSigner[];
     let owner: HardhatEthersSigner;
-    let user: HardhatEthersSigner;
   
     beforeEach(async function () {
       signers = await ethers.getSigners();
-      [owner, user] = signers;
+      owner = signers[0];
   
       risyDAO = await upgrades.deployProxy(ContractFactory, [owner.address, 0]) as unknown as RisyDAO;
       await risyDAO.waitForDeployment();
@@ -346,6 +345,146 @@ describe("Risy DAO Standard", function () {
       await instance.connect(voter1).transfer(voter2.address, 2);
   
       expect(await instance.numCheckpoints(voter1.address)).to.equal(3);
+    });
+  });
+});
+
+describe("Risy DAO Advanced Functionality", function () {
+  let ContractFactory: RisyDAO__factory;
+  let instance: RisyDAO;
+  let signers: HardhatEthersSigner[];
+  let owner: HardhatEthersSigner;
+  let decimals: bigint;
+
+  beforeEach(async function () {
+    signers = await ethers.getSigners();
+    ContractFactory = await ethers.getContractFactory("RisyDAO") as RisyDAO__factory;
+    owner = signers[0];
+    instance = await upgrades.deployProxy(ContractFactory, [owner.address, 0]) as unknown as RisyDAO;
+    await instance.waitForDeployment();
+    decimals = await instance.decimals();
+  });
+
+  describe("Daily transfer limit", function () {
+    it("Should allow setting transfer limit", async function () {
+      await instance.setTransferLimit(86400, ethers.parseUnits("20", 16)); // 20% daily limit
+      const [timeWindow, transferLimitPercent] = await instance.getTransferLimit();
+      expect(timeWindow).to.equal(86400);
+      expect(transferLimitPercent).to.equal(ethers.parseUnits("20", 16));
+    });
+
+    it("Should enforce daily transfer limit", async function () {
+      // Set daily transfer limit to 10%
+      await instance.setTransferLimit(86400, ethers.parseUnits("10", 16)); // 10% daily limit
+
+      let balance = await instance.balanceOf(owner.address);
+      let transferAmount = balance * BigInt(11) / BigInt(100); // 11% of balance
+
+      // Should allow transfer of 11% for the owner DAO
+      instance.transfer(signers[1].address, transferAmount);
+
+      // Should not count transfer of the owner DAO
+      expect(await instance.getTransferLimitDetails(owner.address)).to.deep.equal([
+        0,
+        balance * BigInt(10) / BigInt(100),
+        balance * BigInt(10) / BigInt(100),
+        0
+      ]);
+
+      // Should revert transfer of 11% for the users
+      await expect(instance.connect(signers[1]).transfer(signers[2].address, transferAmount)).to.be.revertedWithCustomError(
+        instance,
+        "ERC20DailyLimitError"
+      );
+
+      balance = await instance.balanceOf(signers[1].address);
+      transferAmount = balance * BigInt(9) / BigInt(100); // 9% of balance
+
+      // Should allow transfer of 9% of balance
+      await instance.connect(signers[1]).transfer(signers[2].address, transferAmount);
+
+      // Remaining transfer limit should be 1% of balance
+      expect(await instance.getTransferLimitDetails(signers[1].address)).to.deep.equal([
+        balance * BigInt(9) / BigInt(100),
+        balance * BigInt(10) / BigInt(100),
+        balance * BigInt(1) / BigInt(100),
+        BigInt(9) * BigInt(10) ** decimals / BigInt(10) 
+      ]);
+
+      // Should revert transfer of 1% of balance
+      await expect(instance.connect(signers[1]).transfer(signers[2].address, await instance.balanceOf(signers[1].address) / BigInt(100))).to.be.revertedWithCustomError(
+        instance,
+        "ERC20DailyLimitError"
+      );
+
+      // Next day
+      await ethers.provider.send("evm_increaseTime", [86400]);
+      await ethers.provider.send("evm_mine", []);
+
+      // Remaining transfer limit should be 10% of balance
+      expect(await instance.getRemainingTransferLimit(signers[1].address)).to.equal(await instance.balanceOf(signers[1].address) * BigInt(10) / BigInt(100));
+
+      // Should allow transfer of 10% for the users
+      await instance.connect(signers[1]).transfer(signers[2].address, await instance.balanceOf(signers[1].address) * BigInt(10) / BigInt(100));
+
+      // Remaining transfer limit should be 0
+      expect(await instance.getRemainingTransferLimit(signers[1].address)).to.equal(0);
+    });
+  });
+
+  describe("DAO fee on transfer", function () {
+    it("Should apply DAO fee on transfer", async function () {
+      const transferAmount = ethers.parseUnits("1000", 18);
+      const initialOwnerBalance = await instance.balanceOf(owner.address);
+      await instance.transfer(signers[1].address, transferAmount);
+      const finalOwnerBalance = await instance.balanceOf(owner.address);
+      const fee = transferAmount * BigInt(1) / BigInt(1000); // 0.1% fee
+      expect(finalOwnerBalance).to.equal(initialOwnerBalance - transferAmount + fee);
+    });
+
+    it("Should allow setting DAO fee", async function () {
+      const newFee = ethers.parseUnits("5", 15); // 0.5%
+      await instance.setDAOFee(newFee);
+      expect(await instance.getDAOFee()).to.equal(newFee);
+    });
+  });
+
+  describe("Max balance limit", function () {
+    it("Should enforce max balance limit", async function () {
+      const maxBalance = await instance.getMaxBalance();
+      await expect(instance.transfer(signers[1].address, maxBalance + BigInt(1))).to.be.revertedWithCustomError(
+        instance,
+        "ERC20MaxBalanceLimitError"
+      );
+    });
+
+    it("Should allow setting max balance limit", async function () {
+      const newMaxBalance = ethers.parseUnits("10000000", 18);
+      await instance.setMaxBalance(newMaxBalance);
+      expect(await instance.getMaxBalance()).to.equal(newMaxBalance);
+    });
+  });
+
+  describe("Whitelist functionality", function () {
+    it("Should allow whitelisted addresses to bypass limits", async function () {
+      await instance.setWhiteList(signers[1].address, true);
+      const largeAmount = await instance.getMaxBalance();
+      await instance.transfer(signers[1].address, largeAmount);
+      expect(await instance.balanceOf(signers[1].address)).to.equal(largeAmount);
+    });
+  });
+
+  describe("Trigger mechanism", function () {
+    it("Should set and call trigger", async function () {
+      const TriggerMock = await ethers.getContractFactory("TriggerMock") as TriggerMock__factory;
+      const triggerMock = await TriggerMock.deploy() as unknown as TriggerMock;
+      await triggerMock.waitForDeployment();
+
+      await instance.setTrigger(await triggerMock.getAddress());
+      expect(await instance.getTrigger()).to.equal(await triggerMock.getAddress());
+
+      await instance.transfer(signers[1].address, ethers.parseUnits("1", 18));
+      expect(await triggerMock.called()).to.be.true;
     });
   });
 });

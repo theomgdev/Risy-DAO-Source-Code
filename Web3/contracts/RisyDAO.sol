@@ -80,21 +80,22 @@ contract RisyDAO is RisyBase {
         __RisyBase_init(initialOwner, initialSupply);
     }
 
-    function _currentDay() internal view returns (uint256) {
+    function currentDay() public view returns (uint256) {
         return block.timestamp / _getRisyDAOStorage().timeWindow;
     }
 
-    function _updateDailyTransferLimit(address sender, uint256 amount) internal {
+    function _increaseTransferred(address account, uint256 amount) internal {
         RisyDAOStorage storage rs = _getRisyDAOStorage();
-        uint256 currentDay = _currentDay();
-        uint256 dailyLimit = (balanceOf(sender) * rs.transferLimitPercent) / 10 ** decimals();
+        rs.transferred[account][currentDay()] += amount;
+    }
 
-        if (rs.transferred[sender][currentDay] + amount > dailyLimit) {
+    function _updateDailyTransferLimit(address sender, uint256 amount) internal {
+        if (getTransferredAmountToday(sender) + amount > getMaxTransferAmount(sender)) {
             (uint256 transferredAmountToday, uint256 maxTransferAmount, uint256 remainingTransferLimit, uint256 percentTransferred) = getTransferLimitDetails(sender);
             revert ERC20DailyLimitError(sender, transferredAmountToday, maxTransferAmount, remainingTransferLimit, percentTransferred);
         }
 
-        rs.transferred[sender][currentDay] += amount;
+        _increaseTransferred(sender, amount);
     }
 
     function _update(address from, address to, uint256 amount) internal override {
@@ -145,11 +146,12 @@ contract RisyDAO is RisyBase {
     }
 
     function getTransferredAmountToday(address account) public view returns (uint256) {
-        return _getRisyDAOStorage().transferred[account][_currentDay()];
+        return _getRisyDAOStorage().transferred[account][currentDay()];
     }
 
     function getMaxTransferAmount(address account) public view returns (uint256) {
         RisyDAOStorage storage rs = _getRisyDAOStorage();
+
         return (balanceOf(account) * rs.transferLimitPercent) / 10 ** decimals();
     }
 
@@ -161,7 +163,7 @@ contract RisyDAO is RisyBase {
 
     function getPercentTransferred(address account) public view returns (uint256) {
         uint256 maxTransferAmount = getMaxTransferAmount(account);
-        return maxTransferAmount > 0 ? (getTransferredAmountToday(account) * 100) / maxTransferAmount : 0;
+        return maxTransferAmount > 0 ? (getTransferredAmountToday(account) * 10 ** decimals()) / maxTransferAmount : 0;
     }
 
     function getTransferLimitDetails(address account) public view returns (
