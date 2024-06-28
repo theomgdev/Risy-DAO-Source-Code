@@ -24,8 +24,8 @@ describe("Risy DAO Standard Functionality", function () {
     it("Test initial creation of contract", async function () {
       expect(await instance.name()).to.equal("Risy DAO");
       expect(decimals).to.equal(18);
-      expect(await instance.totalSupply()).to.equal(BigInt(1_000_000_000_000) * BigInt(10) ** BigInt(decimals));
-      expect(await instance.balanceOf(owner.address)).to.equal(BigInt(1_000_000_000_000) * BigInt(10) ** BigInt(decimals));
+      expect(await instance.totalSupply()).to.equal(ethers.parseUnits("1000000000000", decimals));
+      expect(await instance.balanceOf(owner.address)).to.equal(ethers.parseUnits("1000000000000", decimals));
     });
   
     it("Test transfers, approvals, and allowances", async function () {
@@ -48,10 +48,9 @@ describe("Risy DAO Standard Functionality", function () {
     });
   
     it("Test minting and burning", async function () {
-      let recipient = signers[1];
       let ownerFirstBalance = await instance.balanceOf(owner.address);
   
-      await expect(instance.connect(owner).burn(BigInt(1) + ownerFirstBalance))
+      await expect(instance.connect(owner).burn(ethers.parseUnits("1", 0) + ownerFirstBalance))
         .to.be.revertedWithCustomError(instance, "ERC20InsufficientBalance");
 
       await instance.connect(owner).burn(ownerFirstBalance);
@@ -62,10 +61,10 @@ describe("Risy DAO Standard Functionality", function () {
       let cap = await instance.cap();
       let totalSupply = await instance.totalSupply();
   
-      await expect(instance.connect(owner).mint(recipient.address, BigInt(cap) - BigInt(totalSupply) + BigInt(1)))
+      await expect(instance.connect(owner).mint(recipient.address, cap - totalSupply + ethers.parseUnits("1", 0)))
         .to.be.revertedWithCustomError(instance, "ERC20ExceededCap");
   
-      await instance.connect(owner).mint(recipient.address, BigInt(cap) - BigInt(totalSupply));
+      await instance.connect(owner).mint(recipient.address, cap - totalSupply);
       expect(await instance.totalSupply()).to.equal(cap);
     });
   
@@ -128,7 +127,7 @@ describe("Risy DAO Standard Functionality", function () {
         .to.be.revertedWithCustomError(instance, "ERC2612InvalidSigner");
 
       // Check balances
-      expect(await instance.balanceOf(owner.address)).to.equal(BigInt(1_000_000_000_000) * BigInt(10) ** BigInt(decimals) - BigInt(value));
+      expect(await instance.balanceOf(owner.address)).to.equal(ethers.parseUnits("1000000000000", decimals) - ethers.parseUnits(value.toString(), 0));
       expect(await instance.balanceOf(spender.address)).to.equal(value);
     });
   });
@@ -259,6 +258,166 @@ describe("Risy DAO Standard Functionality", function () {
       await instance.connect(voter1).transfer(voter2.address, 2);
   
       expect(await instance.numCheckpoints(voter1.address)).to.equal(3);
+    });
+  });
+});
+
+describe("Risy DAO Advanced Features", function () {
+  let ContractFactory: RisyDAO__factory;
+  let instance: RisyDAO;
+  let signers: HardhatEthersSigner[];
+  let owner: HardhatEthersSigner;
+  let user1: HardhatEthersSigner;
+  let user2: HardhatEthersSigner;
+  let decimals: bigint;
+
+  beforeEach(async function () {
+    signers = await ethers.getSigners();
+    ContractFactory = await ethers.getContractFactory("RisyDAO") as RisyDAO__factory;
+    [owner, user1, user2] = signers;
+    instance = await upgrades.deployProxy(ContractFactory, [owner.address, 0]) as unknown as RisyDAO;
+    await instance.waitForDeployment();
+    decimals = await instance.decimals();
+
+    // Mint some tokens to users for testing
+    await instance.connect(owner).mint(user1.address, ethers.parseUnits("1000", decimals));
+    await instance.connect(owner).mint(user2.address, ethers.parseUnits("1000", decimals));
+  });
+
+  describe("Daily Transfer Limit", function () {
+    it("should enforce daily transfer limit", async function () {
+      const transferLimit = await instance.getTransferLimit();
+      const timeWindow = transferLimit[0];
+      const transferLimitPercent = transferLimit[1];
+
+      // Calculate max transferable amount (10% of balance by default)
+      let maxTransferable = (await instance.balanceOf(user1.address) * transferLimitPercent) / ethers.parseUnits("1", decimals);
+
+      // Transfer at the limit should succeed
+      await instance.connect(user1).transfer(user2.address, maxTransferable);
+
+      // Transfer exceeding the limit should fail
+      await expect(instance.connect(user1).transfer(user2.address, 1))
+        .to.be.revertedWithCustomError(instance, "ERC20DailyLimitError");
+
+      // Wait for the time window to pass
+      await ethers.provider.send("evm_increaseTime", [Number(timeWindow)]);
+      await ethers.provider.send("evm_mine", []);
+
+      // Check if new transferable is set
+      maxTransferable = (await instance.balanceOf(user1.address) * transferLimitPercent) / ethers.parseUnits("1", decimals);
+
+      // Transfer should now succeed
+      await expect(instance.connect(user1).transfer(user2.address, maxTransferable))
+        .to.not.be.reverted;
+
+      await expect(instance.connect(user1).transfer(user2.address, 1))
+        .to.be.revertedWithCustomError(instance, "ERC20DailyLimitError");
+    });
+
+    it("should allow owner to set transfer limit", async function () {
+      await instance.connect(owner).setTransferLimit(43200, ethers.parseUnits("0.20", decimals)); // 12 hours, 20%
+      const newLimit = await instance.getTransferLimit();
+      expect(newLimit[0]).to.equal(43200);
+      expect(newLimit[1]).to.equal(ethers.parseUnits("0.20", decimals));
+    });
+  });
+
+  describe("DAO Fee on Transfer", function () {
+    it("should apply DAO fee on transfer", async function () {
+      const initialOwnerBalance = await instance.balanceOf(owner.address);
+      const transferAmount = ethers.parseUnits("100", decimals);
+
+      await instance.connect(user1).transfer(user2.address, transferAmount);
+
+      const daoFee = await instance.getDAOFee();
+      const expectedFee = (transferAmount * daoFee) / ethers.parseUnits("1", decimals);
+
+      expect(await instance.balanceOf(owner.address)).to.equal(initialOwnerBalance + expectedFee);
+    });
+
+    it("should allow owner to set DAO fee", async function () {
+      await instance.connect(owner).setDAOFee(ethers.parseUnits("0.5", decimals)); // 0.5%
+      expect(await instance.getDAOFee()).to.equal(ethers.parseUnits("0.5", decimals));
+    });
+  });
+
+  describe("Max Balance Limit", function () {
+    it("should enforce max balance limit", async function () {
+      const maxBalance = await instance.getMaxBalance();
+      const excessAmount = maxBalance + ethers.parseUnits("1", 0);
+
+      // Mint tokens to reach just to max balance
+      await instance.connect(owner).mint(user1.address, maxBalance - await instance.balanceOf(user1.address));
+
+      // Transfer exceeding max balance should fail
+      await expect(instance.connect(user2).transfer(user1.address, 1))
+        .to.be.revertedWithCustomError(instance, "ERC20MaxBalanceLimitError");
+
+      // Transfer of excess amount should fail
+      await instance.connect(owner).mint(user1.address, excessAmount * ethers.parseUnits("10", 0));
+      await expect(instance.connect(user1).transfer(user2.address, excessAmount))
+        .to.be.revertedWithCustomError(instance, "ERC20MaxBalanceLimitError");
+
+      // Transfer from the owner account should succeed
+      await expect(instance.connect(owner).transfer(user2.address, excessAmount))
+        .to.not.be.reverted;
+    });
+
+    it("should allow owner to set max balance", async function () {
+      const newMaxBalance = ethers.parseUnits("2000000", decimals);
+      await instance.connect(owner).setMaxBalance(newMaxBalance);
+      expect(await instance.getMaxBalance()).to.equal(newMaxBalance);
+    });
+  });
+
+  describe("Trigger Mechanism", function () {
+    let triggerMock: TriggerMock;
+
+    beforeEach(async function () {
+      const TriggerMockFactory = await ethers.getContractFactory("TriggerMock") as TriggerMock__factory;
+      triggerMock = await TriggerMockFactory.deploy() as TriggerMock;
+      await triggerMock.waitForDeployment();
+
+      await instance.connect(owner).setTrigger(await triggerMock.getAddress());
+    });
+
+    it("should call trigger on transfer", async function () {
+      await instance.connect(user1).transfer(user2.address, 1);
+      expect(await triggerMock.called()).to.be.true;
+    });
+
+    it("should allow owner to set trigger", async function () {
+      const newTrigger = ethers.Wallet.createRandom().address;
+      await instance.connect(owner).setTrigger(newTrigger);
+      expect(await instance.getTrigger()).to.equal(newTrigger);
+    });
+  });
+
+  describe("Whitelist Functionality", function () {
+    it("should bypass limits for whitelisted addresses", async function () {
+      await instance.connect(owner).setWhiteList(user1.address, true);
+
+      const transferAmount = await instance.balanceOf(user1); // An amount exceeding 10% of balance (daily limit)
+
+      // Be sure transfer amount exceeds daily limit
+      expect(transferAmount).to.be.greaterThan((await instance.getTransferLimit())[1]);
+
+      // Transfer exceeding daily limit should succeed for whitelisted address
+      await expect(instance.connect(user1).transfer(user2.address, transferAmount))
+        .to.not.be.reverted;
+
+      // Whitelist status should be queryable
+      expect(await instance.isWhiteListed(user1.address)).to.be.true;
+      expect(await instance.isWhiteListed(user2.address)).to.be.false;
+    });
+
+    it("should allow owner to set whitelist status", async function () {
+      await instance.connect(owner).setWhiteList(user2.address, true);
+      expect(await instance.isWhiteListed(user2.address)).to.be.true;
+
+      await instance.connect(owner).setWhiteList(user2.address, false);
+      expect(await instance.isWhiteListed(user2.address)).to.be.false;
     });
   });
 });

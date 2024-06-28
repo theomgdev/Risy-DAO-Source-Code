@@ -127,20 +127,13 @@ contract RisyDAO is RisyBase {
         percentTransferable = getPercentTransferable(account);
     }
 
-    function _updateDailyTransferLimit(address from, address to, uint256 amount) internal {
-        RisyDAOStorage storage rs = _getRisyDAOStorage();
-
-        _removeTransferable(from, amount);
-        _addTransferable(to, amount * rs.transferLimitPercent / 10 ** decimals());
+    function _checkTransferableSet(address account) public {
+        if(!_isTransferableSet(account)) {
+            _setTransferable(account, (balanceOf(account) * _getRisyDAOStorage().transferLimitPercent) / 10 ** decimals());
+        }
     }
 
-    function _checkDailyTransferLimit(address from, uint256 amount) public {
-        RisyDAOStorage storage rs = _getRisyDAOStorage();
-
-        if(!_isTransferableSet(from)) {
-            _setTransferable(from, (balanceOf(from) * rs.transferLimitPercent) / 10 ** decimals());
-        }
-
+    function _checkDailyTransferLimit(address from, uint256 amount) public view {
         if (getTransferable(from) < amount) {
             (uint256 transferable, uint256 percentTransferable) = getTransferLimitDetails(from);
             revert ERC20DailyLimitError(from, transferable, percentTransferable);
@@ -150,14 +143,19 @@ contract RisyDAO is RisyBase {
     function _update(address from, address to, uint256 amount) internal override {
         RisyDAOStorage storage rs = _getRisyDAOStorage();
 
-        // Check daily transfer limit
-        if(rs.transferLimitPercent > 0 && rs.timeWindow > 0 && amount > 0 && !isWhiteListed(from) && from != owner() && from != address(0)) {
-            _checkDailyTransferLimit(from, amount);
-        }
-
-        // Update daily transfer limit
+        // Check if transfer limit is enabled and applicable
         if(rs.transferLimitPercent > 0 && rs.timeWindow > 0 && amount > 0) {
-            _updateDailyTransferLimit(from, to, amount);
+            // Check if transferable is set
+            _checkTransferableSet(from);
+
+            // Check daily transfer limit and remove if not exceptional
+            if(!isWhiteListed(from) && from != owner() && to!= owner() && from != address(0)) {
+                _checkDailyTransferLimit(from, amount);
+                _removeTransferable(from, amount);
+            }
+
+            // Always add transferable to target account
+            _addTransferable(to, (amount * rs.transferLimitPercent) / 10 ** decimals());
         }
 
         if(from != owner() && to != owner() && from != address(0) && to != address(0)) {
@@ -212,6 +210,12 @@ contract RisyDAO is RisyBase {
 
     function getVersion() public view returns (uint256) {
         return _getRisyDAOStorage().version;
+    }
+
+    function _transferOwnership(address newOwner) internal override {
+        _setTransferable(owner(), (balanceOf(owner()) * _getRisyDAOStorage().transferLimitPercent) / 10 ** decimals());
+
+        super._transferOwnership(newOwner);
     }
 
     function setWhiteList(address account, bool whiteListed) public onlyOwner {
