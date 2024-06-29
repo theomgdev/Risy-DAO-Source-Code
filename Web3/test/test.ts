@@ -443,7 +443,7 @@ describe("Risy DAO Advanced Features", function () {
 });
 
 
-describe("RisyDAOManager", function () {
+describe("Risy DAO Management Features", function () {
   let RisyDAOFactory: RisyDAO__factory;
   let RisyDAOManagerFactory: RisyDAOManager__factory;
   let risyDAO: RisyDAO;
@@ -493,7 +493,7 @@ describe("RisyDAOManager", function () {
     await risyDAO.connect(owner).transferOwnership(await risyDAOManager.getAddress());
   });
 
-  describe("Initialization", function () {
+  describe("Governor: Initialization", function () {
     it("should set the correct token address", async function () {
       expect(await risyDAOManager.token()).to.equal(await risyDAO.getAddress());
     });
@@ -511,7 +511,7 @@ describe("RisyDAOManager", function () {
     });
   });
 
-  describe("Ownership Transfer", function () {
+  describe("Governor: Ownership Transfer", function () {
     it("should transfer ownership of RisyDAO to RisyDAOManager", async function () {
       expect(await risyDAO.owner()).to.equal(await risyDAOManager.getAddress());
     });
@@ -564,7 +564,7 @@ describe("RisyDAOManager", function () {
     });
   });
 
-  describe("Advanced Proposal Scenarios", function () {
+  describe("Governor: Advanced Proposal Scenarios", function () {
     let proposalId: bigint;
     const proposalDescription = "Proposal #1: Store 123 in the DAO";
 
@@ -619,7 +619,7 @@ describe("RisyDAOManager", function () {
     });
   });
 
-  describe("Governance Thresholds", function () {
+  describe("Governor: Governance Thresholds", function () {
     it("should not allow proposals below threshold", async function () {
       // 10% of balance to bypass daily limit and to voter1 to bypass max balance limit
       await risyDAO.connect(proposer).transfer(voter1.address, await risyDAO.balanceOf(proposer.address) / ethers.parseUnits("10",0));
@@ -646,7 +646,7 @@ describe("RisyDAOManager", function () {
     });
   });
 
-  describe("Voting Restrictions", function () {
+  describe("Governor: Voting Restrictions", function () {
     it("should non-token holders to vote zero", async function () {
       const proposalId = await createProposal();
       await ethers.provider.send("evm_increaseTime", [VOTING_DELAY + 1]);
@@ -660,7 +660,7 @@ describe("RisyDAOManager", function () {
     });
   });
 
-  describe("View Functions", function () {
+  describe("Governor: View Functions", function () {
     let proposalId: bigint;
 
     beforeEach(async function () {
