@@ -285,7 +285,7 @@ describe("Risy DAO Advanced Features", function () {
     await instance.connect(owner).mint(user2.address, ethers.parseUnits("1000", decimals));
   });
 
-  describe("Daily Transfer Limit", function () {
+  describe("ERC20: Daily Transfer Limit", function () {
     it("should enforce daily transfer limit", async function () {
       const transferLimit = await instance.getTransferLimit();
       const timeWindow = transferLimit[0];
@@ -324,7 +324,7 @@ describe("Risy DAO Advanced Features", function () {
     });
   });
 
-  describe("DAO Fee on Transfer", function () {
+  describe("ERC20: DAO Fee on Transfer", function () {
     it("should apply DAO fee on transfer", async function () {
       const initialOwnerBalance = await instance.balanceOf(owner.address);
       const transferAmount = ethers.parseUnits("100", decimals);
@@ -343,7 +343,7 @@ describe("Risy DAO Advanced Features", function () {
     });
   });
 
-  describe("Max Balance Limit", function () {
+  describe("ERC20: Max Balance Limit", function () {
     it("should enforce max balance limit", async function () {
       // Set max balance to 0.75% of initial supply
       await instance.connect(owner).setMaxBalance((ethers.parseUnits("0.075", decimals) * ethers.parseUnits("1000000000000",18)) / ethers.parseUnits("1", decimals));
@@ -391,7 +391,7 @@ describe("Risy DAO Advanced Features", function () {
     });
   });
 
-  describe("Trigger Mechanism", function () {
+  describe("ERC20: Trigger Mechanism", function () {
     let triggerMock: TriggerMock;
 
     beforeEach(async function () {
@@ -414,7 +414,7 @@ describe("Risy DAO Advanced Features", function () {
     });
   });
 
-  describe("Whitelist Functionality", function () {
+  describe("ERC20: Whitelist Functionality", function () {
     it("should bypass limits for whitelisted addresses", async function () {
       await instance.connect(owner).setWhiteList(user1.address, true);
 
