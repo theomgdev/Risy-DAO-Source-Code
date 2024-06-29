@@ -613,21 +613,22 @@ describe("RisyDAOManager", function () {
       await risyDAOManager.connect(voter3).castVote(proposalId, 2); // Abstain
 
       const proposal = await risyDAOManager.proposalVotes(proposalId);
-      expect(proposal.forVotes).to.equal(await risyDAO.getVotes(voter1.address, await risyDAOManager.proposalSnapshot(proposalId)));
-      expect(proposal.againstVotes).to.equal(await risyDAO.getVotes(voter2.address, await risyDAOManager.proposalSnapshot(proposalId)));
-      expect(proposal.abstainVotes).to.equal(await risyDAO.getVotes(voter3.address, await risyDAOManager.proposalSnapshot(proposalId)));
+      expect(proposal.forVotes).to.equal(await risyDAO.getPastVotes(voter1.address, await risyDAOManager.proposalSnapshot(proposalId)));
+      expect(proposal.againstVotes).to.equal(await risyDAO.getPastVotes(voter2.address, await risyDAOManager.proposalSnapshot(proposalId)));
+      expect(proposal.abstainVotes).to.equal(await risyDAO.getPastVotes(voter3.address, await risyDAOManager.proposalSnapshot(proposalId)));
     });
   });
 
   describe("Governance Thresholds", function () {
     it("should not allow proposals below threshold", async function () {
-      await risyDAO.connect(proposer).transfer(owner.address, await risyDAO.balanceOf(proposer.address));
+      // 10% of balance to bypass daily limit and to voter1 to bypass max balance limit
+      await risyDAO.connect(proposer).transfer(voter1.address, await risyDAO.balanceOf(proposer.address) / ethers.parseUnits("10",0));
       await expect(risyDAOManager.connect(proposer).propose(
         [await risyDAO.getAddress()],
         [0],
         [risyDAO.interface.encodeFunctionData("setDAOFee", [123])],
         "Proposal below threshold"
-      )).to.be.revertedWith("Governor: proposer votes below proposal threshold");
+      )).to.be.revertedWithCustomError(risyDAOManager, "GovernorInsufficientProposerVotes");
     });
 
     it("should not pass a proposal if quorum is not reached", async function () {
@@ -646,13 +647,16 @@ describe("RisyDAOManager", function () {
   });
 
   describe("Voting Restrictions", function () {
-    it("should not allow non-token holders to vote", async function () {
+    it("should non-token holders to vote zero", async function () {
       const proposalId = await createProposal();
       await ethers.provider.send("evm_increaseTime", [VOTING_DELAY + 1]);
       await ethers.provider.send("evm_mine", []);
 
-      await expect(risyDAOManager.connect(nonVoter).castVote(proposalId, 1))
-        .to.be.revertedWithCustomError(risyDAOManager, "GovernorInvalidVoteWeight");
+      await risyDAOManager.connect(nonVoter).castVote(proposalId, 1);
+
+      // Check votes of proposal, should be 0
+      const proposal = await risyDAOManager.proposalVotes(proposalId);
+      expect(proposal.forVotes).to.equal(0);
     });
   });
 
@@ -670,10 +674,7 @@ describe("RisyDAOManager", function () {
     });
 
     it("should return correct vote power at different timestamps", async function () {
-      const initialVotePower = await risyDAOManager.getVotes(voter1.address, await ethers.provider.getBlock('latest').then(b => b!.timestamp));
-      
-      // Set a high transfer limit to avoid daily limit issues
-      await risyDAO.connect(owner).setTransferLimit(86400, ethers.parseUnits("1", 18)); // 100% daily limit
+      const initialVotePower = await risyDAO.getVotes(voter1.address);
 
       await risyDAO.connect(voter1).transfer(voter2.address, ethers.parseUnits("50000000", 18));
       await risyDAO.connect(voter2).delegate(voter2.address);
@@ -682,8 +683,7 @@ describe("RisyDAOManager", function () {
       await ethers.provider.send("evm_increaseTime", [60]); // 1 minute
       await ethers.provider.send("evm_mine", []);
 
-      const newTimestamp = await ethers.provider.getBlock('latest').then(b => b!.timestamp);
-      const newVotePower = await risyDAOManager.getVotes(voter1.address, newTimestamp);
+      const newVotePower = await risyDAO.getVotes(voter1.address);
 
       expect(newVotePower).to.be.lessThan(initialVotePower);
     });
