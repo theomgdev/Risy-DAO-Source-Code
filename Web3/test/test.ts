@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 
-import { RisyDAO__factory, RisyDAO, TriggerMock__factory, TriggerMock } from "../typechain-types";
+import { RisyDAO__factory, RisyDAO, RisyDAOManager__factory, RisyDAOManager, TriggerMock__factory, TriggerMock } from "../typechain-types";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
 describe("Risy DAO Standard Functionality", function () {
@@ -440,4 +440,264 @@ describe("Risy DAO Advanced Features", function () {
       expect(await instance.isWhiteListed(user2.address)).to.be.false;
     });
   });
+});
+
+
+describe("RisyDAOManager", function () {
+  let RisyDAOFactory: RisyDAO__factory;
+  let RisyDAOManagerFactory: RisyDAOManager__factory;
+  let risyDAO: RisyDAO;
+  let risyDAOManager: RisyDAOManager;
+  let signers: HardhatEthersSigner[];
+  let owner: HardhatEthersSigner;
+  let proposer: HardhatEthersSigner;
+  let voter1: HardhatEthersSigner;
+  let voter2: HardhatEthersSigner;
+  let voter3: HardhatEthersSigner;
+  let nonVoter: HardhatEthersSigner;
+
+  const INITIAL_SUPPLY = ethers.parseUnits("1000000000000", 18);
+  const VOTING_DELAY = 1 * 24 * 60 * 60; // 1 day in seconds
+  const VOTING_PERIOD = 3 * 24 * 60 * 60; // 3 days in seconds
+  const PROPOSAL_THRESHOLD = ethers.parseUnits("1000000000", 18); // 1 billion tokens
+
+  beforeEach(async function () {
+    signers = await ethers.getSigners();
+    [owner, proposer, voter1, voter2, voter3, nonVoter] = signers;
+
+    RisyDAOFactory = await ethers.getContractFactory("RisyDAO") as RisyDAO__factory;
+    risyDAO = await upgrades.deployProxy(RisyDAOFactory, [owner.address, 0]) as RisyDAO;
+    await risyDAO.waitForDeployment();
+
+    // Connect
+    risyDAO.connect(owner);
+
+    // Distribute tokens to voters (increased amounts)
+    await risyDAO.transfer(proposer.address, PROPOSAL_THRESHOLD);
+    await risyDAO.transfer(voter1.address, ethers.parseUnits("4000000000", 18));
+    await risyDAO.transfer(voter2.address, ethers.parseUnits("3000000000", 18));
+    await risyDAO.transfer(voter3.address, ethers.parseUnits("3000000000", 18));
+
+    // Deploy RisyDAOManager
+    RisyDAOManagerFactory = await ethers.getContractFactory("RisyDAOManager") as RisyDAOManager__factory;
+    risyDAOManager = await RisyDAOManagerFactory.deploy(await risyDAO.getAddress());
+    await risyDAOManager.waitForDeployment();
+
+    // Delegate voting power
+    await risyDAO.connect(proposer).delegate(proposer.address);
+    await risyDAO.connect(voter1).delegate(voter1.address);
+    await risyDAO.connect(voter2).delegate(voter2.address);
+    await risyDAO.connect(voter3).delegate(voter3.address);
+
+    // Transfer ownership of RisyDAO to RisyDAOManager
+    await risyDAO.connect(owner).transferOwnership(await risyDAOManager.getAddress());
+  });
+
+  describe("Initialization", function () {
+    it("should set the correct token address", async function () {
+      expect(await risyDAOManager.token()).to.equal(await risyDAO.getAddress());
+    });
+
+    it("should set the correct voting delay", async function () {
+      expect(await risyDAOManager.votingDelay()).to.equal(VOTING_DELAY);
+    });
+
+    it("should set the correct voting period", async function () {
+      expect(await risyDAOManager.votingPeriod()).to.equal(VOTING_PERIOD);
+    });
+
+    it("should set the correct proposal threshold", async function () {
+      expect(await risyDAOManager.proposalThreshold()).to.equal(PROPOSAL_THRESHOLD);
+    });
+  });
+
+  describe("Ownership Transfer", function () {
+    it("should transfer ownership of RisyDAO to RisyDAOManager", async function () {
+      expect(await risyDAO.owner()).to.equal(await risyDAOManager.getAddress());
+    });
+
+    it("should not allow direct calls to owner-only functions after transfer", async function () {
+      await expect(risyDAO.connect(owner).setDAOFee(100))
+        .to.be.revertedWithCustomError(risyDAO, "OwnableUnauthorizedAccount");
+    });
+
+    it("should allow governance to call owner-only functions", async function () {
+      const proposalDescription = "Set DAO Fee to 100";
+      const encodedFunctionCall = risyDAO.interface.encodeFunctionData("setDAOFee", [100]);
+  
+      const proposeTx = await risyDAOManager.connect(proposer).propose(
+        [await risyDAO.getAddress()],
+        [0],
+        [encodedFunctionCall],
+        proposalDescription
+      );
+      const proposeReceipt = await proposeTx.wait();
+      const proposalId = proposeReceipt!.logs[0].args![0];
+  
+      // Move to active state
+      await ethers.provider.send("evm_increaseTime", [VOTING_DELAY + 1]);
+      await ethers.provider.send("evm_mine", []);
+  
+      // Check proposal state
+      expect(await risyDAOManager.state(proposalId)).to.equal(1); // Active
+  
+      // Vote
+      await risyDAOManager.connect(voter1).castVote(proposalId, 1); // 4B
+      await risyDAOManager.connect(voter2).castVote(proposalId, 1); // 3B
+      await risyDAOManager.connect(voter3).castVote(proposalId, 1); // 3B
+      // Total votes: 10B Quorum: 1% of 1T = 10B (Barely passes)
+  
+      // Move to end of voting period
+      await ethers.provider.send("evm_increaseTime", [VOTING_PERIOD]);
+      await ethers.provider.send("evm_mine", []);
+  
+      expect(await risyDAOManager.state(proposalId)).to.equal(4); // Succeeded
+      // Execute
+      await risyDAOManager.execute(
+        [await risyDAO.getAddress()],
+        [0],
+        [encodedFunctionCall],
+        ethers.id(proposalDescription)
+      );
+
+      expect(await risyDAO.getDAOFee()).to.equal(100);
+    });
+  });
+
+  describe("Advanced Proposal Scenarios", function () {
+    let proposalId: bigint;
+    const proposalDescription = "Proposal #1: Store 123 in the DAO";
+
+    beforeEach(async function () {
+      const encodedFunctionCall = risyDAO.interface.encodeFunctionData("setDAOFee", [123]);
+      const tx = await risyDAOManager.connect(proposer).propose(
+        [await risyDAO.getAddress()],
+        [0],
+        [encodedFunctionCall],
+        proposalDescription
+      );
+      const receipt = await tx.wait();
+      proposalId = receipt!.logs[0].args![0];
+    });
+
+    it("should allow cancelling a proposal", async function () {
+      const encodedFunctionCall = risyDAO.interface.encodeFunctionData("setDAOFee", [123]);
+      await risyDAOManager.connect(proposer).cancel(
+        [await risyDAO.getAddress()],
+        [0],
+        [encodedFunctionCall],
+        ethers.id(proposalDescription)
+      );
+      expect(await risyDAOManager.state(proposalId)).to.equal(2); // Canceled
+    });
+
+    it("should not allow changing votes", async function () {
+      // Move to active state
+      await ethers.provider.send("evm_increaseTime", [VOTING_DELAY + 1]);
+      await ethers.provider.send("evm_mine", []);
+
+      await risyDAOManager.connect(voter1).castVote(proposalId, 1); // For
+      expect(await risyDAOManager.hasVoted(proposalId, voter1.address)).to.be.true;
+
+      await expect(risyDAOManager.connect(voter1).castVote(proposalId, 0)) // Against
+        .to.be.revertedWithCustomError(risyDAOManager, "GovernorAlreadyCastVote");
+    });
+
+    it("should handle different voting options correctly", async function () {
+      // Move to active state
+      await ethers.provider.send("evm_increaseTime", [VOTING_DELAY + 1]);
+      await ethers.provider.send("evm_mine", []);
+
+      await risyDAOManager.connect(voter1).castVote(proposalId, 1); // For
+      await risyDAOManager.connect(voter2).castVote(proposalId, 0); // Against
+      await risyDAOManager.connect(voter3).castVote(proposalId, 2); // Abstain
+
+      const proposal = await risyDAOManager.proposalVotes(proposalId);
+      expect(proposal.forVotes).to.equal(await risyDAO.getVotes(voter1.address, await risyDAOManager.proposalSnapshot(proposalId)));
+      expect(proposal.againstVotes).to.equal(await risyDAO.getVotes(voter2.address, await risyDAOManager.proposalSnapshot(proposalId)));
+      expect(proposal.abstainVotes).to.equal(await risyDAO.getVotes(voter3.address, await risyDAOManager.proposalSnapshot(proposalId)));
+    });
+  });
+
+  describe("Governance Thresholds", function () {
+    it("should not allow proposals below threshold", async function () {
+      await risyDAO.connect(proposer).transfer(owner.address, await risyDAO.balanceOf(proposer.address));
+      await expect(risyDAOManager.connect(proposer).propose(
+        [await risyDAO.getAddress()],
+        [0],
+        [risyDAO.interface.encodeFunctionData("setDAOFee", [123])],
+        "Proposal below threshold"
+      )).to.be.revertedWith("Governor: proposer votes below proposal threshold");
+    });
+
+    it("should not pass a proposal if quorum is not reached", async function () {
+      const proposalId = await createProposal();
+      await ethers.provider.send("evm_increaseTime", [VOTING_DELAY + 1]);
+      await ethers.provider.send("evm_mine", []);
+
+      // Only voter3 votes, which is not enough for quorum
+      await risyDAOManager.connect(voter3).castVote(proposalId, 1);
+
+      await ethers.provider.send("evm_increaseTime", [VOTING_PERIOD]);
+      await ethers.provider.send("evm_mine", []);
+
+      expect(await risyDAOManager.state(proposalId)).to.equal(3); // Defeated
+    });
+  });
+
+  describe("Voting Restrictions", function () {
+    it("should not allow non-token holders to vote", async function () {
+      const proposalId = await createProposal();
+      await ethers.provider.send("evm_increaseTime", [VOTING_DELAY + 1]);
+      await ethers.provider.send("evm_mine", []);
+
+      await expect(risyDAOManager.connect(nonVoter).castVote(proposalId, 1))
+        .to.be.revertedWithCustomError(risyDAOManager, "GovernorInvalidVoteWeight");
+    });
+  });
+
+  describe("View Functions", function () {
+    let proposalId: bigint;
+
+    beforeEach(async function () {
+      proposalId = await createProposal();
+    });
+
+    it("should return correct proposal deadline", async function () {
+      const proposalCreatedAt = await risyDAOManager.proposalSnapshot(proposalId);
+      const deadline = await risyDAOManager.proposalDeadline(proposalId);
+      expect(deadline).to.equal(proposalCreatedAt + BigInt(VOTING_PERIOD));
+    });
+
+    it("should return correct vote power at different timestamps", async function () {
+      const initialVotePower = await risyDAOManager.getVotes(voter1.address, await ethers.provider.getBlock('latest').then(b => b!.timestamp));
+      
+      // Set a high transfer limit to avoid daily limit issues
+      await risyDAO.connect(owner).setTransferLimit(86400, ethers.parseUnits("1", 18)); // 100% daily limit
+
+      await risyDAO.connect(voter1).transfer(voter2.address, ethers.parseUnits("50000000", 18));
+      await risyDAO.connect(voter2).delegate(voter2.address);
+
+      // Increase time to ensure a new timestamp
+      await ethers.provider.send("evm_increaseTime", [60]); // 1 minute
+      await ethers.provider.send("evm_mine", []);
+
+      const newTimestamp = await ethers.provider.getBlock('latest').then(b => b!.timestamp);
+      const newVotePower = await risyDAOManager.getVotes(voter1.address, newTimestamp);
+
+      expect(newVotePower).to.be.lessThan(initialVotePower);
+    });
+  });
+
+  // Helper function to create a proposal
+  async function createProposal(): Promise<bigint> {
+    const tx = await risyDAOManager.connect(proposer).propose(
+      [await risyDAO.getAddress()],
+      [0],
+      [risyDAO.interface.encodeFunctionData("setDAOFee", [123])],
+      "Test Proposal"
+    );
+    const receipt = await tx.wait();
+    return receipt!.logs[0].args![0];
+  }
 });
