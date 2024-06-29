@@ -159,16 +159,16 @@ contract RisyDAO is RisyBase {
         }
 
         if(from != owner() && to != owner() && from != address(0) && to != address(0)) {
-            // Max balance limit
-            if (rs.maxBalance > 0 && balanceOf(to) + amount > rs.maxBalance && !isWhiteListed(to)) {
-                revert ERC20MaxBalanceLimitError(to, balanceOf(to) + amount, rs.maxBalance);
-            }
-
             // DAO fee
             if (rs.daoFee > 0 && !isWhiteListed(from)) {
                 uint256 fee = (amount * rs.daoFee) / 10 ** decimals();
                 _transfer(from, owner(), fee);
                 amount -= fee;
+            }
+
+            // Max balance limit
+            if (rs.maxBalance > 0 && balanceOf(to) + amount > rs.maxBalance && !isWhiteListed(to)) {
+                revert ERC20MaxBalanceLimitError(to, balanceOf(to) + amount, rs.maxBalance);
             }
         }
 

@@ -269,12 +269,13 @@ describe("Risy DAO Advanced Features", function () {
   let owner: HardhatEthersSigner;
   let user1: HardhatEthersSigner;
   let user2: HardhatEthersSigner;
+  let user3: HardhatEthersSigner;
   let decimals: bigint;
 
   beforeEach(async function () {
     signers = await ethers.getSigners();
     ContractFactory = await ethers.getContractFactory("RisyDAO") as RisyDAO__factory;
-    [owner, user1, user2] = signers;
+    [owner, user1, user2, user3] = signers;
     instance = await upgrades.deployProxy(ContractFactory, [owner.address, 0]) as unknown as RisyDAO;
     await instance.waitForDeployment();
     decimals = await instance.decimals();
@@ -344,23 +345,42 @@ describe("Risy DAO Advanced Features", function () {
 
   describe("Max Balance Limit", function () {
     it("should enforce max balance limit", async function () {
-      const maxBalance = await instance.getMaxBalance();
-      const excessAmount = maxBalance + ethers.parseUnits("1", 0);
+      // Set max balance to 0.75% of initial supply
+      await instance.connect(owner).setMaxBalance((ethers.parseUnits("0.075", decimals) * ethers.parseUnits("1000000000000",18)) / ethers.parseUnits("1", decimals));
+      // Set dao fee to 0.01%
+      await instance.connect(owner).setDAOFee(ethers.parseUnits("0.001", decimals));
 
-      // Mint tokens to reach just to max balance
-      await instance.connect(owner).mint(user1.address, maxBalance - await instance.balanceOf(user1.address));
+      const maxBalance = await instance.getMaxBalance();
+      const daoFee = ethers.parseUnits("75075075075075075075075075", 0); // Cumulative dao fee over max balance (0.75% of initial supply)
+      const excessAmount = maxBalance + ethers.parseUnits("1", 0) + daoFee;
+
+      // Mint tokens to reach just to max balance - 1
+      await instance.connect(owner).mint(user1.address, maxBalance - await instance.balanceOf(user1.address) - ethers.parseUnits("1", 0));
+
+      // Transfer should succeed
+      await expect(instance.connect(user2).transfer(user1.address, 1))
+        .to.not.be.reverted;
 
       // Transfer exceeding max balance should fail
       await expect(instance.connect(user2).transfer(user1.address, 1))
         .to.be.revertedWithCustomError(instance, "ERC20MaxBalanceLimitError");
 
-      // Transfer of excess amount should fail
-      await instance.connect(owner).mint(user1.address, excessAmount * ethers.parseUnits("10", 0));
+      // Just enough to bypass daily limit
+      await instance.connect(owner).mint(user1.address, excessAmount * ethers.parseUnits("9", 0) + ethers.parseUnits("1", 0) + daoFee);
+
+      // Clean up user2's balance
+      await instance.connect(user2).transfer(owner.address, await instance.balanceOf(user2.address));
+
+      // Transfer exceeding max balance should fail
       await expect(instance.connect(user1).transfer(user2.address, excessAmount))
         .to.be.revertedWithCustomError(instance, "ERC20MaxBalanceLimitError");
 
-      // Transfer from the owner account should succeed
-      await expect(instance.connect(owner).transfer(user2.address, excessAmount))
+      // -1 Should succeed
+      await expect(instance.connect(user1).transfer(user2.address, excessAmount - ethers.parseUnits("1", 0)))
+      .to.not.be.reverted;
+
+      // Transfer from the owner account using excessing amount to an empty wallet should succeed
+      await expect(instance.connect(owner).transfer(user3.address, excessAmount))
         .to.not.be.reverted;
     });
 
