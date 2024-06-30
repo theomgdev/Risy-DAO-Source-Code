@@ -127,13 +127,13 @@ contract RisyDAO is RisyBase {
         percentTransferable = getPercentTransferable(account);
     }
 
-    function _checkTransferableSet(address account) public {
+    function _checkTransferableSet(address account) internal {
         if(!_isTransferableSet(account)) {
             _setTransferable(account, (balanceOf(account) * _getRisyDAOStorage().transferLimitPercent) / 10 ** decimals());
         }
     }
 
-    function _checkDailyTransferLimit(address from, uint256 amount) public view {
+    function _checkDailyTransferLimit(address from, uint256 amount) internal view {
         if (getTransferable(from) < amount) {
             (uint256 transferable, uint256 percentTransferable) = getTransferLimitDetails(from);
             revert ERC20DailyLimitError(from, transferable, percentTransferable);
