@@ -176,7 +176,7 @@ Risy DAO has ambitious plans for future development:
 - **Initial Liquidity**: $20,000 (50% USDT, 50% PAXG)
 - **DAO Fee**: 0.1% on each transfer (except buys from UniswapV2 DEX)
 - **Daily Transfer Limit**: 10% of balance
-- **Temporary Hodl Limit for The ICO**: 0.75% during ICO
+- **Temporary Hodl Limit for the ICO**: 0.75% during ICO
 
 Key points:
 - Correlation with both USD and gold provides stability
