@@ -174,14 +174,14 @@ Risy DAO has ambitious plans for future development:
 - **Maximum Supply**: 10x initial supply
 - **Creator Holdings**: Only 2% of initial supply
 - **Initial Liquidity**: $20,000 (50% USDT, 50% PAXG)
-- **DAO Fee**: 0.1% on each transfer (except buys from UniswapV2 DEX)
+- **DAO Fee**: 0.1% on each transfer
 - **Daily Transfer Limit**: 10% of balance
 - **Temporary Hodl Limit for the ICO**: 0.75% during ICO
 
 Key points:
 - Correlation with both USD and gold provides stability
 - DAO fee funds ongoing development and community initiatives
-- Exemption of DEX buys from limits encourages purchasing
+- Exemption of DEX buys from daily limits encourages purchasing (approximately 10:1 buy/sell ratio)
 - Built on Polygon for fast and affordable transactions
 
 ## License

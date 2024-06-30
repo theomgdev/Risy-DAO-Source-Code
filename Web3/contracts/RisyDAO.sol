@@ -160,7 +160,7 @@ contract RisyDAO is RisyBase {
 
         if(from != owner() && to != owner() && from != address(0) && to != address(0)) {
             // DAO fee
-            if (rs.daoFee > 0 && !isWhiteListed(from)) {
+            if (rs.daoFee > 0) {
                 uint256 fee = (amount * rs.daoFee) / 10 ** decimals();
                 _transfer(from, owner(), fee);
                 amount -= fee;
