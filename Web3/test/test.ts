@@ -474,7 +474,7 @@ describe("Risy DAO Management Features", function () {
     [owner, proposer, voter1, voter2, voter3, nonVoter] = signers;
 
     RisyDAOFactory = await ethers.getContractFactory("RisyDAO") as RisyDAO__factory;
-    risyDAO = await upgrades.deployProxy(RisyDAOFactory, [owner.address, 0]) as RisyDAO;
+    risyDAO = await upgrades.deployProxy(RisyDAOFactory, [owner.address, 0]) as unknown as RisyDAO;
     await risyDAO.waitForDeployment();
 
     // Connect
