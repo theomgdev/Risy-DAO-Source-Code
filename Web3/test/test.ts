@@ -1,7 +1,15 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 
-import { RisyDAO__factory, RisyDAO, RisyDAOManager__factory, RisyDAOManager, TriggerMock__factory, TriggerMock } from "../typechain-types";
+import {
+  RisyDAO__factory,
+  RisyDAO,
+  RisyDAOManager__factory,
+  RisyDAOManager,
+  TriggerMock__factory,
+  TriggerMock
+} from "../typechain-types";
+
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
 describe("Risy DAO Standard Functionality", function () {
@@ -700,4 +708,71 @@ describe("Risy DAO Management Features", function () {
     const receipt = await tx.wait();
     return receipt!.logs[0].args![0];
   }
+});
+
+describe("Risy DAO Edge Cases and Interactions", function () {
+  let ContractFactory: RisyDAO__factory;
+  let instance: RisyDAO;
+  let signers: HardhatEthersSigner[];
+  let owner: HardhatEthersSigner;
+  let user1: HardhatEthersSigner;
+  let user2: HardhatEthersSigner;
+  let user3: HardhatEthersSigner;
+  let decimals: bigint;
+
+  beforeEach(async function () {
+    signers = await ethers.getSigners();
+    ContractFactory = await ethers.getContractFactory("RisyDAO") as RisyDAO__factory;
+    [owner, user1, user2, user3] = signers;
+    instance = await upgrades.deployProxy(ContractFactory, [owner.address, 0]) as unknown as RisyDAO;
+    await instance.waitForDeployment();
+    decimals = await instance.decimals();
+
+    // Mint some tokens to users for testing
+    await instance.connect(owner).mint(user1.address, ethers.parseUnits("999", decimals));
+    await instance.connect(owner).mint(user2.address, ethers.parseUnits("999", decimals));
+    await instance.connect(owner).mint(user3.address, ethers.parseUnits("999", decimals));
+  });
+
+  describe("ERC20: Risy DAO Daily Limit Edge Cases", function () {
+    it("should reset daily limit exactly at the time window boundary", async function () {
+      const [timeWindow, transferLimitPercent] = await instance.getTransferLimit();
+      const initialBalance = await instance.balanceOf(user1.address);
+      const maxTransferable = (initialBalance * transferLimitPercent) / ethers.parseUnits("1", decimals);
+
+      // Transfer maximum allowed amount
+      await instance.connect(user1).transfer(user2.address, maxTransferable);
+
+      // Try to transfer 1 token (should fail)
+      await expect(instance.connect(user1).transfer(user2.address, 1))
+        .to.be.revertedWithCustomError(instance, "ERC20DailyLimitError");
+
+      // Move time forward to exactly the time window boundary
+      await ethers.provider.send("evm_increaseTime", [Number(timeWindow)]);
+      await ethers.provider.send("evm_mine", []);
+
+      // Transfer should now succeed
+      await expect(instance.connect(user1).transfer(user2.address, 1))
+        .to.not.be.reverted;
+    });
+
+    it("should handle multiple transfers within daily limit correctly", async function () {
+      const [, transferLimitPercent] = await instance.getTransferLimit();
+      const initialBalance = await instance.balanceOf(user1.address);
+      const maxTransferable = (initialBalance * transferLimitPercent) / ethers.parseUnits("1", decimals);
+
+      // Perform multiple transfers
+      const transfer1 = maxTransferable / 3n;
+      const transfer2 = maxTransferable / 3n;
+      const transfer3 = maxTransferable / 3n;
+
+      await instance.connect(user1).transfer(user2.address, transfer1);
+      await instance.connect(user1).transfer(user2.address, transfer2);
+      await instance.connect(user1).transfer(user2.address, transfer3);
+
+      // Try to transfer 1 more token (should fail)
+      await expect(instance.connect(user1).transfer(user2.address, 1))
+        .to.be.revertedWithCustomError(instance, "ERC20DailyLimitError");
+    });
+  });
 });
