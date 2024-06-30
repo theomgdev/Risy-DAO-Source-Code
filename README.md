@@ -20,7 +20,7 @@ Risy DAO is a revolutionary decentralized autonomous organization (DAO) built on
 ## Features
 
 - **Fully Decentralized**: Managed by KYC DAO (Owner is the DAO)
-- **Capped Supply**: Maximum supply is 10x the initial supply
+- **Capped Supply**: Maximum supply is 2x the initial supply
 - **Daily Transfer Limit**: Whale protection mechanism based on a percentage of total balance (default 10%)
 - **DAO Fee**: Fee on transfers for DAO maintenance, development, and marketing (default 0.1%)
 - **ICO Max Balance Limit**: Whale protection mechanism to limit maximum token holdings (default 0.75% of total supply)
@@ -171,7 +171,7 @@ Risy DAO has ambitious plans for future development:
 ## Tokenomics
 
 - **Initial Supply**: 1,000,000,000,000 RISY
-- **Maximum Supply**: 10x initial supply
+- **Maximum Supply**: 2x initial supply
 - **Creator Holdings**: Only 2% of initial supply
 - **Initial Liquidity**: $20,000 (50% USDT, 50% PAXG)
 - **DAO Fee**: 0.1% on each transfer

@@ -14,7 +14,7 @@ import "./RisyBase.sol";
  * Features:
  * - Fully decentralized, safe and managed by KYC DAO (Owner is the DAO)
  * - Made with passion and coffee for blockchain nerds by the blockchain nerds
- * - Capped supply to 10x initial supply
+ * - Capped supply to 2x initial supply
  * - Daily transfer limit based on percentage of total balance for whale protection (default 10%)
  * - Transfer limit can be set or disabled by owner DAO
  * - DAO fee on transfer to owner DAO for DAO maintenance, development, and marketing (default 0.1%)
