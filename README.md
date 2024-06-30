@@ -156,7 +156,7 @@ Security is a top priority for Risy DAO:
 - Upgrade functionality is restricted to the DAO through governance
 - Daily transfer limits and max balance limits provide protection against large, malicious transactions
 - Extensive test coverage ensures contract behavior under various conditions
-- The project should undergo a professional security audit before mainnet deployment
+- The project goes a professional security audit before mainnet deployment
 
 ## Future Development
 
