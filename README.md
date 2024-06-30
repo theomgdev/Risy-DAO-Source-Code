@@ -181,7 +181,7 @@ Risy DAO has ambitious plans for future development:
 Key points:
 - Correlation with both USD and gold provides stability
 - DAO fee funds ongoing development and community initiatives
-- Exemption of DEX buys from daily limits encourages purchasing (approximately 10:1 buy/sell ratio)
+- Exemption of DEX buys from daily limits encourages purchasing (approximately 10:1 buy-to-sell ratio)
 - Built on Polygon for fast and affordable transactions
 
 ## License
