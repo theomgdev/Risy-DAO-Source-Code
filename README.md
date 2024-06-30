@@ -23,7 +23,7 @@ Risy DAO is a revolutionary decentralized autonomous organization (DAO) built on
 - **Capped Supply**: Maximum supply is 10x the initial supply
 - **Daily Transfer Limit**: Whale protection mechanism based on a percentage of total balance (default 10%)
 - **DAO Fee**: Fee on transfers for DAO maintenance, development, and marketing (default 0.1%)
-- **Max Balance Limit**: Whale protection mechanism to limit maximum token holdings (default 0.75% of total supply)
+- **ICO Max Balance Limit**: Whale protection mechanism to limit maximum token holdings (default 0.75% of total supply)
 - **Trigger Mechanism**: For automation of tasks
 - **Upgradeable**: Uses the UUPS proxy pattern for future upgrades
 - **Governance**: Integrated with OpenZeppelin's Governor contract for decentralized decision-making
