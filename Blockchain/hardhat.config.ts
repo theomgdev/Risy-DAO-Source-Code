@@ -67,7 +67,7 @@ const config: HardhatUserConfig = {
         chainId: 80002,
         urls: {
           apiURL: "https://www.oklink.com/api/explorer/v1/amoy/contract/multipartVerify",
-          browserURL: "https://www.oklink.com/en/amoy"
+          browserURL: "https://www.oklink.com/amoy"
         }
       },
       {
@@ -75,7 +75,7 @@ const config: HardhatUserConfig = {
         chainId: 137,
         urls: {
           apiURL: "https://www.oklink.com/api/explorer/v1/polygon/contract/multipartVerify",
-          browserURL: "https://www.oklink.com/en/polygon"
+          browserURL: "https://www.oklink.com/polygon"
         }
       }
     ]
