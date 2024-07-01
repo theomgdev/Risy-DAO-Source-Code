@@ -9,7 +9,7 @@ async function main() {
   const risyDAOManagerAddress = process.env.RISY_DAO_MANAGER_ADDRESS;
 
   if (!risyDAOAddress || !risyDAOManagerAddress) {
-    console.error("Please provide the RisyDAO contract address and the new owner address.");
+    console.error("Please provide the RisyDAO contract address and the new owner address in the .env file.");
     process.exit(1);
   }
 

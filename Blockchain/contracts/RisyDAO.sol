@@ -244,8 +244,8 @@ contract RisyDAO is RisyBase {
     }
 
     function upgradeToAndCall(address newImplementation, bytes memory data) public payable override onlyProxy {
-        super.upgradeToAndCall(newImplementation, data);
-
         _getRisyDAOStorage().version++;
+
+        super.upgradeToAndCall(newImplementation, data);
     }
 }
