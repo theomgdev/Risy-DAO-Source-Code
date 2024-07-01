@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risy DAO - Rise with RISY</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #6366F1, #3B82F6, #2DD4BF);
+        }
+        .text-gradient {
+            background: linear-gradient(135deg, #6366F1, #3B82F6, #2DD4BF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white" x-data="{ 
+    contractAddress: '0x1234567890123456789012345678901234567890',
+    whitepaperUrl: '#',
+    dexScreenerUrl: '#',
+    quickSwapUrl: '#',
+    socialLinks: {
+        twitter: '#',
+        telegram: '#',
+        discord: '#',
+        github: '#'
+    },
+    contactEmail: 'info@risydao.com'
+}">
+    <header class="fixed w-full z-10 bg-gray-900 bg-opacity-90 backdrop-blur-md">
+        <nav class="container mx-auto px-6 py-3" x-data="{ open: false }">
+            <div class="flex justify-between items-center">
+                <a href="#" class="text-2xl font-bold text-gradient animate__animated animate__fadeIn">Risy DAO</a>
+                <button @click="open = !open" class="md:hidden">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="hidden md:flex space-x-4">
+                    <a href="#about" class="hover:text-indigo-400 transition animate__animated animate__fadeIn" style="animation-delay: 0.2s;">About</a>
+                    <a href="#features" class="hover:text-indigo-400 transition animate__animated animate__fadeIn" style="animation-delay: 0.4s;">Features</a>
+                    <a href="#tokenomics" class="hover:text-indigo-400 transition animate__animated animate__fadeIn" style="animation-delay: 0.6s;">Tokenomics</a>
+                    <a href="#roadmap" class="hover:text-indigo-400 transition animate__animated animate__fadeIn" style="animation-delay: 0.8s;">Roadmap</a>
+                    <a href="#resources" class="hover:text-indigo-400 transition animate__animated animate__fadeIn" style="animation-delay: 1s;">Resources</a>
+                </div>
+            </div>
+            <div x-show="open" class="md:hidden mt-3 space-y-2">
+                <a href="#about" class="block hover:text-indigo-400 transition">About</a>
+                <a href="#features" class="block hover:text-indigo-400 transition">Features</a>
+                <a href="#tokenomics" class="block hover:text-indigo-400 transition">Tokenomics</a>
+                <a href="#roadmap" class="block hover:text-indigo-400 transition">Roadmap</a>
+                <a href="#resources" class="block hover:text-indigo-400 transition">Resources</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="hero" class="min-h-screen flex items-center justify-center gradient-bg">
+            <div class="text-center">
+                <h1 class="text-5xl md:text-7xl font-bold mb-6 animate__animated animate__fadeInDown">Rise with RISY</h1>
+                <p class="text-xl md:text-2xl mb-8 animate__animated animate__fadeInUp animate__delay-1s">The Future of Decentralized Finance</p>
+                <a href="#" class="bg-white text-indigo-600 px-6 py-3 rounded-full font-semibold hover:bg-indigo-100 transition animate__animated animate__fadeInUp animate__delay-2s">Join the Revolution</a>
+            </div>
+        </section>
+
+        <section id="about" class="py-20 bg-gray-800">
+            <div class="container mx-auto px-6">
+                <h2 class="text-4xl font-bold mb-8 text-center text-gradient animate__animated animate__fadeIn">About Risy DAO</h2>
+                <div class="grid md:grid-cols-2 gap-12 items-center">
+                    <div class="animate__animated animate__fadeInLeft">
+                        <p class="text-lg mb-6">Risy DAO is a revolutionary decentralized autonomous organization built on the Polygon blockchain. We're addressing critical issues in the cryptocurrency space, including centralization, market manipulation, and unfair token distribution.</p>
+                        <p class="text-lg">Our mission is to create a truly decentralized, community-driven ecosystem that continuously evolves to meet the needs of its users. With Risy DAO, we're building a more equitable, stable, and sustainable financial future.</p>
+                    </div>
+                    <div class="relative animate__animated animate__fadeInRight">
+                        <img src="/api/placeholder/500/300" alt="Decentralized Network" class="rounded-lg shadow-2xl animate-float">
+                        <div class="absolute -bottom-4 -right-4 bg-indigo-600 text-white p-4 rounded-lg">
+                            <p class="font-semibold">Made with passion and coffee</p>
+                            <p>for blockchain nerds by blockchain nerds</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="py-20 bg-gray-900">
+            <div class="container mx-auto px-6">
+                <h2 class="text-4xl font-bold mb-12 text-center text-gradient animate__animated animate__fadeIn">Key Features</h2>
+                <div class="grid md:grid-cols-3 gap-8" id="features-grid">
+                    <!-- Feature cards will be dynamically added here -->
+                </div>
+            </div>
+        </section>
+
+        <section id="tokenomics" class="py-20 bg-gray-800">
+            <div class="container mx-auto px-6">
+                <h2 class="text-4xl font-bold mb-12 text-center text-gradient animate__animated animate__fadeIn">Tokenomics</h2>
+                <div class="grid md:grid-cols-2 gap-12 items-center">
+                    <div class="animate__animated animate__fadeInLeft">
+                        <ul class="space-y-4" id="tokenomics-list">
+                            <!-- Tokenomics items will be dynamically added here -->
+                        </ul>
+                    </div>
+                    <div class="relative animate__animated animate__fadeInRight">
+                        <img src="/api/placeholder/500/300" alt="Tokenomics Chart" class="rounded-lg shadow-2xl animate-float">
+                        <div class="absolute -bottom-4 -left-4 bg-indigo-600 text-white p-4 rounded-lg">
+                            <p class="font-semibold">Designed for long-term stability</p>
+                            <p>and sustainable growth</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="roadmap" class="py-20 bg-gray-900">
+            <div class="container mx-auto px-6">
+                <h2 class="text-4xl font-bold mb-12 text-center text-gradient animate__animated animate__fadeIn">Roadmap</h2>
+                <div class="relative">
+                    <div class="absolute h-full w-1 bg-indigo-500 left-1/2 transform -translate-x-1/2"></div>
+                    <div class="space-y-12" id="roadmap-timeline">
+                        <!-- Roadmap items will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="resources" class="py-20 bg-gray-800">
+            <div class="container mx-auto px-6">
+                <h2 class="text-4xl font-bold mb-12 text-center text-gradient animate__animated animate__fadeIn">Resources</h2>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-gray-900 p-6 rounded-lg shadow-lg animate__animated animate__fadeInLeft">
+                        <h3 class="text-2xl font-semibold mb-4">Important Links</h3>
+                        <ul class="space-y-2">
+                            <li>
+                                <a :href="'https://polygonscan.com/address/' + contractAddress" target="_blank" class="text-indigo-400 hover:text-indigo-300 transition">
+                                    <i class="fas fa-file-contract mr-2"></i>Smart Contract on PolygonScan
+                                </a>
+                            </li>
+                            <li>
+                                <a :href="whitepaperUrl" target="_blank" class="text-indigo-400 hover:text-indigo-300 transition">
+                                    <i class="fas fa-file-pdf mr-2"></i>Whitepaper
+                                </a>
+                            </li>
+                            <li>
+                                <a :href="dexScreenerUrl" target="_blank" class="text-indigo-400 hover:text-indigo-300 transition">
+                                    <i class="fas fa-chart-line mr-2"></i>DEX Screener
+                                </a>
+                            </li>
+                            <li>
+                                <a :href="quickSwapUrl" target="_blank" class="text-indigo-400 hover:text-indigo-300 transition">
+                                    <i class="fas fa-exchange-alt mr-2"></i>Trade on QuickSwap
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="bg-gray-900 p-6 rounded-lg shadow-lg animate__animated animate__fadeInRight">
+                        <h3 class="text-2xl font-semibold mb-4">How to Get Started</h3>
+                        <ol class="list-decimal list-inside space-y-2">
+                            <li>Connect your wallet to Polygon network</li>
+                            <li>Acquire MATIC for gas fees</li>
+                            <li>Visit QuickSwap to swap for RISY tokens</li>
+                            <li>Join our community on Discord or Telegram</li>
+                            <li>Participate in DAO governance</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 py-12">
+        <div class="container mx-auto px-6">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-xl font-semibold mb-4">Risy DAO</h3>
+                    <p class="text-gray-400">Revolutionizing decentralized finance on the Polygon blockchain.</p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold mb-4">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#about" class="text-gray-400 hover:text-white transition">About</a></li>
+                        <li><a href="#features" class="text-gray-400 hover:text-white transition">Features</a></li>
+                        <li><a href="#tokenomics" class="text-gray-400 hover:text-white transition">Tokenomics</a></li>
+                        <li><a href="#roadmap" class="text-gray-400 hover:text-white transition">Roadmap</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold mb-4">Resources</h3>
+                    <ul class="space-y-2">
+                        <li><a :href="whitepaperUrl" class="text-gray-400 hover:text-white transition">Whitepaper</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition">FAQ</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition">Blog</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition">Press Kit</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold mb-4">Connect</h3>
+                    <ul class="space-y-2">
+                        <li>
+                            <a :href="'mailto:' + contactEmail" class="text-gray-400 hover:text-white transition">
+                                <i class="fas fa-envelope mr-2"></i><span x-text="contactEmail"></span>
+                            </a>
+                        </li>
+                        <li>
+                            <a :href="socialLinks.twitter" class="text-gray-400 hover:text-white transition">
+                                <i class="fab fa-twitter mr-2"></i>Twitter
+                            </a>
+                        </li>
+                        <li>
+                            <a :href="socialLinks.telegram" class="text-gray-400 hover:text-white transition">
+                                <i class="fab fa-telegram mr-2"></i>Telegram
+                            </a>
+                        </li>
+                        <li>
+                            <a :href="socialLinks.discord" class="text-gray-400 hover:text-white transition">
+                                <i class="fab fa-discord mr-2"></i>Discord
+                            </a>
+                        </li>
+                        <li>
+                            <a :href="socialLinks.github" class="text-gray-400 hover:text-white transition">
+                                <i class="fab fa-github mr-2"></i>GitHub
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-8 pt-8 border-t border-gray-700 text-center">
+                <p>&copy; 2024 Risy DAO. All rights reserved.</p>
+                <div class="mt-4 flex justify-center space-x-4">
+                    <a :href="socialLinks.twitter" class="text-gray-400 hover:text-white transition"><i class="fab fa-twitter"></i></a>
+                    <a :href="socialLinks.telegram" class="text-gray-400 hover:text-white transition"><i class="fab fa-telegram"></i></a>
+                    <a :href="socialLinks.discord" class="text-gray-400 hover:text-white transition"><i class="fab fa-discord"></i></a>
+                    <a :href="socialLinks.github" class="text-gray-400 hover:text-white transition"><i class="fab fa-github"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Features animation
+        const features = [
+            { icon: 'fa-lock', title: 'Decentralized Governance', description: 'Fully managed by the DAO, ensuring no single entity has disproportionate control.' },
+            { icon: 'fa-shield-alt', title: 'Whale Protection', description: '10% daily transfer limit and 0.75% temporary hodl limit for ICO prevent market manipulation.' },
+            { icon: 'fa-chart-line', title: 'Economic Stability', description: 'Correlated with both USD and gold, providing stability against various market conditions.' },
+            { icon: 'fa-coins', title: 'Sustainable Funding', description: '0.1% DAO fee on transfers funds ongoing development and community initiatives.' },
+            { icon: 'fa-tachometer-alt', title: 'Scalability', description: 'Built on Polygon for fast and cost-effective transactions and dApp development.' },
+            { icon: 'fa-code-branch', title: 'Continuous Improvement', description: 'DAO mechanism allows the project to evolve and upgrade based on community decisions.' }
+        ];
+
+        const featuresGrid = document.getElementById('features-grid');
+        features.forEach((feature, index) => {
+            const featureElement = document.createElement('div');
+            featureElement.className = 'bg-gray-800 p-6 rounded-lg shadow-lg animate__animated animate__fadeIn';
+            featureElement.style.animationDelay = `${index * 0.2}s`;
+            featureElement.innerHTML = `
+                <i class="fas ${feature.icon} text-4xl text-indigo-500 mb-4"></i>
+                <h3 class="text-xl font-semibold mb-2">${feature.title}</h3>
+                <p>${feature.description}</p>
+            `;
+            featuresGrid.appendChild(featureElement);
+        });
+
+        // Tokenomics animation
+        const tokenomics = [
+            'Initial Supply: 1,000,000,000,000 RISY',
+            'Maximum Supply: 2x initial supply',
+            'Creator Holdings: Only 2% of initial supply',
+            'Initial Liquidity: $20,000 (50% USDT, 50% PAXG)',
+            'DAO Fee: 0.1% on each transfer',
+            'Daily Transfer Limit: 10% of balance',
+            'ICO Max Balance: 0.75% during ICO period'
+        ];
+
+        const tokenomicsList = document.getElementById('tokenomics-list');
+        tokenomics.forEach((item, index) => {
+            const listItem = document.createElement('li');
+            listItem.className = 'animate__animated animate__fadeInLeft';
+            listItem.style.animationDelay = `${index * 0.2}s`;
+            listItem.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-2"></i> ${item}`;
+            tokenomicsList.appendChild(listItem);
+        });
+
+        // Roadmap animation
+        const roadmapItems = [
+            { quarter: 'Q3 2024', items: ['Launch of Risy DAO and RISY token on Polygon mainnet', 'Initial DEX offering (IDO) and liquidity provision', 'Governance platform launch'] },
+            { quarter: 'Q4 2024', items: ['First community governance proposals', 'Development of initial dApp prototypes', 'Strategic partnerships with other blockchain projects'] },
+            { quarter: 'Q1 2025', items: ['Launch of first Risy DAO-powered DeFi application', 'Integration with major wallets and exchanges', 'Begin development of gaming ecosystem'] }
+        ];
+
+        const roadmapTimeline = document.getElementById('roadmap-timeline');
+        roadmapItems.forEach((item, index) => {
+            const roadmapElement = document.createElement('div');
+            roadmapElement.className = 'relative animate__animated animate__fadeIn';
+            roadmapElement.style.animationDelay = `${index * 0.3}s`;
+            roadmapElement.innerHTML = `
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg md:w-1/2 ${index % 2 === 0 ? 'md:ml-auto md:-mr-12' : 'md:mr-auto md:-ml-12'}">
+                    <h3 class="text-xl font-semibold mb-2">${item.quarter}</h3>
+                    <ul class="list-disc list-inside">
+                        ${item.items.map(subItem => `<li>${subItem}</li>`).join('')}
+                    </ul>
+                </div>
+                <div class="absolute top-6 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-indigo-500 rounded-full"></div>
+            `;
+            roadmapTimeline.appendChild(roadmapElement);
+        });
+
+        // Anime.js animations
+        anime({
+            targets: '.animate-float',
+            translateY: [-10, 10],
+            direction: 'alternate',
+            loop: true,
+            easing: 'easeInOutSine',
+            duration: 3000
+        });
+
+        anime({
+            targets: '#features-grid .bg-gray-800',
+            scale: [0.9, 1],
+            opacity: [0, 1],
+            delay: anime.stagger(100, {start: 300}),
+            easing: 'easeOutElastic(1, .5)',
+            duration: 1000,
+            autoplay: false
+        });
+
+        anime({
+            targets: '#tokenomics-list li',
+            translateX: [-50, 0],
+            opacity: [0, 1],
+            delay: anime.stagger(100, {start: 300}),
+            easing: 'easeOutQuad',
+            duration: 800,
+            autoplay: false
+        });
+
+        anime({
+            targets: '#roadmap-timeline .bg-gray-800',
+            translateY: [50, 0],
+            opacity: [0, 1],
+            delay: anime.stagger(200, {start: 300}),
+            easing: 'easeOutQuad',
+            duration: 1000,
+            autoplay: false
+        });
+
+        // Intersection Observer for triggering animations
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if (entry.target.id === 'features-grid') {
+                        anime({
+                            targets: '#features-grid .bg-gray-800',
+                            scale: [0.9, 1],
+                            opacity: [0, 1],
+                            delay: anime.stagger(100, {start: 300}),
+                            easing: 'easeOutElastic(1, .5)',
+                            duration: 1000
+                        });
+                    } else if (entry.target.id === 'tokenomics-list') {
+                        anime({
+                            targets: '#tokenomics-list li',
+                            translateX: [-50, 0],
+                            opacity: [0, 1],
+                            delay: anime.stagger(100, {start: 300}),
+                            easing: 'easeOutQuad',
+                            duration: 800
+                        });
+                    } else if (entry.target.id === 'roadmap-timeline') {
+                        anime({
+                            targets: '#roadmap-timeline .bg-gray-800',
+                            translateY: [50, 0],
+                            opacity: [0, 1],
+                            delay: anime.stagger(200, {start: 300}),
+                            easing: 'easeOutQuad',
+                            duration: 1000
+                        });
+                    }
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        observer.observe(document.getElementById('features-grid'));
+        observer.observe(document.getElementById('tokenomics-list'));
+        observer.observe(document.getElementById('roadmap-timeline'));
+
+        // Parallax effect for hero section
+        window.addEventListener('scroll', () => {
+            const scrollY = window.scrollY;
+            const heroSection = document.getElementById('hero');
+            heroSection.style.backgroundPositionY = `${scrollY * 0.5}px`;
+        });
+
+        // Interactive hover effect for feature cards
+        const featureCards = document.querySelectorAll('#features-grid .bg-gray-800');
+        featureCards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                anime({
+                    targets: card,
+                    scale: 1.05,
+                    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+                    duration: 300,
+                    easing: 'easeOutQuad'
+                });
+            });
+            card.addEventListener('mouseleave', () => {
+                anime({
+                    targets: card,
+                    scale: 1,
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                    duration: 300,
+                    easing: 'easeOutQuad'
+                });
+            });
+        });
+
+        // Animated counter for tokenomics
+        const animateValue = (obj, start, end, duration) => {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString();
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        };
+
+        const initialSupplyElement = document.querySelector('#tokenomics-list li:first-child');
+        const observer2 = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                animateValue(initialSupplyElement.querySelector('span'), 0, 1000000000000, 2000);
+                observer2.unobserve(initialSupplyElement);
+            }
+        }, { threshold: 0.5 });
+
+        initialSupplyElement.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-2"></i> Initial Supply: <span>0</span> RISY`;
+        observer2.observe(initialSupplyElement);
+
+        // Add a pulsing effect to the "Join the Revolution" button
+        anime({
+            targets: '#hero a',
+            scale: [1, 1.1],
+            opacity: [0.9, 1],
+            easing: 'easeInOutQuad',
+            duration: 1000,
+            direction: 'alternate',
+            loop: true
+        });
+
+    </script>
+</body>
+</html>
