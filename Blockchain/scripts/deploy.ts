@@ -37,7 +37,7 @@ async function main() {
 
   // Additional setup steps
   console.log("\nAdditional setup steps:");
-  console.log("1. Set up liquidity pool (50% USDT, 50% PAXG)");
+  console.log("1. Whitelist and set up liquidity pool (50% USDT, 50% PAXG)");
   console.log("2. Set up trigger mechanism if needed");
   console.log("3. Transfer ownership to RisyDAOManager when ready");
 
