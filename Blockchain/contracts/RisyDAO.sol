@@ -28,7 +28,7 @@ import "./RisyBase.sol";
 /// @custom:security-contact info@risy.io
 contract RisyDAO is RisyBase {
     //Error for daily limit
-    error ERC20DailyLimitError(address sender, uint256 transferable, uint256 percentTransferable);
+    error ERC20DailyLimitError(address sender, uint256 transferred, uint256 transferable, uint256 percentTransferable);
 
     //Error for max balance limit
     error ERC20MaxBalanceLimitError(address account, uint256 balance, uint256 maxBalance);
@@ -136,7 +136,7 @@ contract RisyDAO is RisyBase {
     function _checkDailyTransferLimit(address from, uint256 amount) internal view {
         if (getTransferable(from) < amount) {
             (uint256 transferable, uint256 percentTransferable) = getTransferLimitDetails(from);
-            revert ERC20DailyLimitError(from, transferable, percentTransferable);
+            revert ERC20DailyLimitError(from, amount, transferable, percentTransferable);
         }
     }
 
