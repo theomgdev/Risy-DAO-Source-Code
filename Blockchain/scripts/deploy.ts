@@ -1,3 +1,5 @@
+import { config as dotEnvConfig } from "dotenv";
+dotEnvConfig();
 import { ethers, upgrades } from "hardhat";
 import { RisyDAO, RisyDAOManager } from "../typechain-types";
 
