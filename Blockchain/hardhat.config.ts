@@ -5,6 +5,7 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 import "@nomicfoundation/hardhat-chai-matchers";
+import "@enjinstarter/hardhat-oklink-verify";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -58,9 +59,28 @@ const config: HardhatUserConfig = {
       polygon: process.env.POLYGONSCAN_API_KEY || ""
     },
   },
+  oklink: {
+    apiKey: process.env.OKLINK_API_KEY,
+    customChains: [
+      {
+        network: "polygon_amoy",
+        chainId: 80002,
+        urls: {
+          apiURL: "https://www.oklink.com/api/explorer/v1/amoy/contract/multipartVerify",
+          browserURL: "https://www.oklink.com/en/amoy"
+        }
+      },
+      {
+        network: "polygon",
+        chainId: 137,
+        urls: {
+          apiURL: "https://www.oklink.com/api/explorer/v1/polygon/contract/multipartVerify",
+          browserURL: "https://www.oklink.com/en/polygon"
+        }
+      }
+    ]
+  },
   sourcify: {
-    // Disabled by default
-    // Doesn't need an API key
     enabled: true
   }
 };
